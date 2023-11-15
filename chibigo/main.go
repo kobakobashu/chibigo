@@ -32,6 +32,21 @@ func errorf(format string, a ...interface{}) {
 	os.Exit(1)
 }
 
+func verrorAt(loc int, format string, a ...interface{}) {
+	fmt.Fprintln(os.Stderr, string(currentInput))
+	fmt.Fprintf(os.Stderr, "%*s^ ", loc, "")
+	fmt.Fprintf(os.Stderr, format+"\n", a...)
+	os.Exit(1)
+}
+
+func errorAt(loc int, format string, a ...interface{}) {
+	verrorAt(loc, format, a...)
+}
+
+func errorTok(tok *Token, format string, a ...interface{}) {
+	verrorAt(tok.loc, format, a...)
+}
+
 // Consumes the current token if it matches "op".
 func equal(tok *Token, s string, op string) bool {
 	return bytes.Equal([]byte(s[tok.loc:tok.loc+tok.len]), []byte(op))
@@ -93,7 +108,7 @@ func tokenize() (*Token, error) {
 			idx++
 			continue
 		}
-		errorf("invalid token")
+		errorAt(idx, "invalid token: %s", string(currentInput[idx]))
 	}
 	cur.next = newToken(TK_EOF, idx)
 	cur = cur.next
