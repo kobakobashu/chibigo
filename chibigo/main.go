@@ -24,6 +24,8 @@ type Token struct {
 	len  int       // Token length
 }
 
+var currentInput string
+
 // Reports an error and exit.
 func errorf(format string, a ...interface{}) {
 	fmt.Fprintf(os.Stderr, format+"\n", a...)
@@ -60,23 +62,23 @@ func newToken(kind TokenKind, start int) *Token {
 	return tok
 }
 
-// Tokenize `p` and returns new tokens.
-func tokenize(p string) (*Token, error) {
+// Tokenize `currentInput` and returns new tokens.
+func tokenize() (*Token, error) {
 	head := Token{}
 	cur := &head
 
 	var err error
 	idx := 0
-	for idx < len(p) {
-		if unicode.IsSpace(rune(p[idx])) {
+	for idx < len(currentInput) {
+		if unicode.IsSpace(rune(currentInput[idx])) {
 			idx += 1
 			continue
 		}
-		if unicode.IsDigit(rune(p[idx])) {
+		if unicode.IsDigit(rune(currentInput[idx])) {
 			cur.next = newToken(TK_NUM, idx)
 			cur = cur.next
 			tmp := idx
-			cur.val, idx, err = extractNum(p, idx)
+			cur.val, idx, err = extractNum(currentInput, idx)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
 				return nil, err
@@ -84,7 +86,7 @@ func tokenize(p string) (*Token, error) {
 			cur.len = idx - tmp
 			continue
 		}
-		if string(p[idx]) == "+" || string(p[idx]) == "-" {
+		if string(currentInput[idx]) == "+" || string(currentInput[idx]) == "-" {
 			cur.next = newToken(TK_PUNCT, idx)
 			cur = cur.next
 			cur.len = 1
@@ -121,8 +123,8 @@ func main() {
 	fmt.Printf(".globl main\n")
 	fmt.Printf("main:\n")
 
-	str := os.Args[1]
-	tok, err := tokenize(str)
+	currentInput = os.Args[1]
+	tok, err := tokenize()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -138,7 +140,7 @@ func main() {
 	tok = tok.next
 
 	for tok.kind != TK_EOF {
-		if equal(tok, str, "+") {
+		if equal(tok, currentInput, "+") {
 			num, err := getNumber(tok.next)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -148,7 +150,7 @@ func main() {
 			tok = tok.next.next
 			continue
 		}
-		if equal(tok, str, "-") {
+		if equal(tok, currentInput, "-") {
 			num, err := getNumber(tok.next)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -158,7 +160,7 @@ func main() {
 			tok = tok.next.next
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "Found invalid symbol: %s\n", string(str[tok.loc]))
+		fmt.Fprintf(os.Stderr, "Found invalid symbol: %s\n", string(currentInput[tok.loc]))
 		return
 	}
 
