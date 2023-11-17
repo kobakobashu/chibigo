@@ -8,6 +8,10 @@ import (
 	"unicode"
 )
 
+//
+// Tokenizer
+//
+
 type TokenKind int
 
 const (
@@ -48,14 +52,14 @@ func errorTok(tok *Token, format string, a ...interface{}) {
 }
 
 // Consumes the current token if it matches "op".
-func equal(tok *Token, s string, op string) bool {
-	return bytes.Equal([]byte(s[tok.loc:tok.loc+tok.len]), []byte(op))
+func equal(tok *Token, op string) bool {
+	return bytes.Equal([]byte(currentInput[tok.loc:tok.loc+tok.len]), []byte(op))
 }
 
 // Ensure that the current token is `s`.
-func skip(tok *Token, s string, op string) *Token {
-	if !equal(tok, s, op) {
-		errorf("expected '%s", s)
+func skip(tok *Token, op string) *Token {
+	if !equal(tok, op) {
+		errorf("expected '%s", op)
 	}
 	return tok.next
 }
@@ -93,7 +97,7 @@ func tokenize() (*Token, error) {
 			cur.next = newToken(TK_NUM, idx)
 			cur = cur.next
 			tmp := idx
-			cur.val, idx, err = extractNum(currentInput, idx)
+			cur.val, idx, err = extractNum(idx)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
 				return nil, err
@@ -101,7 +105,9 @@ func tokenize() (*Token, error) {
 			cur.len = idx - tmp
 			continue
 		}
-		if string(currentInput[idx]) == "+" || string(currentInput[idx]) == "-" {
+		if string(currentInput[idx]) == "+" || string(currentInput[idx]) == "-" ||
+			string(currentInput[idx]) == "*" || string(currentInput[idx]) == "/" ||
+			string(currentInput[idx]) == "(" || string(currentInput[idx]) == ")" {
 			cur.next = newToken(TK_PUNCT, idx)
 			cur = cur.next
 			cur.len = 1
@@ -116,17 +122,167 @@ func tokenize() (*Token, error) {
 	return head.next, nil
 }
 
-func extractNum(s string, idx int) (int, int, error) {
+func extractNum(idx int) (int, int, error) {
 	numericPart := 0
-	for cur := idx; cur < len(s); cur++ {
-		nextChar := string(s[cur])
+	for cur := idx; cur < len(currentInput); cur++ {
+		nextChar := string(currentInput[cur])
 		num, err := strconv.Atoi(nextChar)
 		if err != nil {
 			return numericPart, cur, nil
 		}
 		numericPart = numericPart*10 + num
 	}
-	return numericPart, len(s), nil
+	return numericPart, len(currentInput), nil
+}
+
+//
+// Parser
+//
+
+type NodeKind int
+
+const (
+	ND_ADD NodeKind = iota // +
+	ND_SUB                 // -
+	ND_MUL                 // *
+	ND_DIV                 // /
+	ND_NUM                 // Integer
+)
+
+// AST node type
+
+type Node struct {
+	kind NodeKind
+	lhs  *Node
+	rhs  *Node
+	val  int
+}
+
+func newNode(kind NodeKind) *Node {
+	node := new(Node)
+	node.kind = kind
+	return node
+}
+
+func newBinary(kind NodeKind, lhs *Node, rhs *Node) *Node {
+	node := newNode(kind)
+	node.lhs = lhs
+	node.rhs = rhs
+	return node
+}
+
+func newNum(val int) *Node {
+	node := newNode(ND_NUM)
+	node.val = val
+	return node
+}
+
+// expr = mul ("+" mul | "-" mul)*
+
+func expr(rest **Token, tok *Token) *Node {
+	node := mul(&tok, tok)
+
+	for {
+		if equal(tok, "+") {
+			node = newBinary(ND_ADD, node, mul(&tok, tok.next))
+			continue
+		}
+
+		if equal(tok, "-") {
+			node = newBinary(ND_SUB, node, mul(&tok, tok.next))
+			continue
+		}
+
+		*rest = tok
+		return node
+	}
+}
+
+// mul = primary ("*" primary | "/" primary)*
+
+func mul(rest **Token, tok *Token) *Node {
+	node := primary(&tok, tok)
+
+	for {
+		if equal(tok, "*") {
+			node = newBinary(ND_MUL, node, mul(&tok, tok.next))
+			continue
+		}
+
+		if equal(tok, "/") {
+			node = newBinary(ND_DIV, node, mul(&tok, tok.next))
+			continue
+		}
+
+		*rest = tok
+		return node
+	}
+}
+
+// primary = "(" expr ")" | num
+
+func primary(rest **Token, tok *Token) *Node {
+	if equal(tok, "(") {
+		node := expr(&tok, tok.next)
+		*rest = skip(tok, ")")
+		return node
+	}
+
+	if tok.kind == TK_NUM {
+		node := newNum(tok.val)
+		*rest = tok.next
+		return node
+	}
+
+	errorTok(tok, "expected an expression")
+	return nil
+}
+
+//
+// Code generator
+//
+
+var depth int
+
+func push() {
+	fmt.Printf("  push rax\n")
+	depth++
+}
+
+func pop(arg string) {
+	fmt.Printf("  pop %s\n", arg)
+	depth--
+}
+
+func genExpr(node *Node) {
+	if node.kind == ND_NUM {
+		fmt.Printf("  mov rax, %d\n", node.val)
+		return
+	}
+
+	genExpr(node.rhs)
+	push()
+	genExpr(node.lhs)
+	pop("rdi")
+
+	switch node.kind {
+	case ND_ADD:
+		fmt.Printf("  add rax, rdi\n")
+		return
+	case ND_SUB:
+		fmt.Printf("  sub rax, rdi\n")
+		return
+	case ND_MUL:
+		fmt.Printf("  imul rax, rdi\n")
+		return
+	case ND_DIV:
+		fmt.Printf("  cqo\n")
+		fmt.Printf("  idiv rdi\n")
+		return
+	}
+
+	errorf("invalid expression")
+	return
 }
 
 func main() {
@@ -134,9 +290,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Invalid arguments number")
 		return
 	}
-	fmt.Printf(".intel_syntax noprefix\n")
-	fmt.Printf(".globl main\n")
-	fmt.Printf("main:\n")
 
 	currentInput = os.Args[1]
 	tok, err := tokenize()
@@ -146,38 +299,21 @@ func main() {
 		return
 	}
 
-	num, err := getNumber(tok)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return
-	}
-	fmt.Printf("  mov rax, %d\n", num)
-	tok = tok.next
+	node := expr(&tok, tok)
 
-	for tok.kind != TK_EOF {
-		if equal(tok, currentInput, "+") {
-			num, err := getNumber(tok.next)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
-				return
-			}
-			fmt.Printf("  add rax, %d\n", num)
-			tok = tok.next.next
-			continue
-		}
-		if equal(tok, currentInput, "-") {
-			num, err := getNumber(tok.next)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
-				return
-			}
-			fmt.Printf("  sub rax, %d\n", num)
-			tok = tok.next.next
-			continue
-		}
-		fmt.Fprintf(os.Stderr, "Found invalid symbol: %s\n", string(currentInput[tok.loc]))
-		return
+	if tok.kind != TK_EOF {
+		errorTok(tok, "extra token")
 	}
 
+	fmt.Printf(".intel_syntax noprefix\n")
+	fmt.Printf(".globl main\n")
+	fmt.Printf("main:\n")
+
+	// Traverse the AST to emit assembly.
+	genExpr(node)
 	fmt.Printf("  ret\n")
+
+	if depth != 0 {
+		panic("Depth is not zero")
+	}
 }
