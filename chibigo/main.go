@@ -147,6 +147,7 @@ const (
 	ND_MUL                 // *
 	ND_DIV                 // /
 	ND_NUM                 // Integer
+	ND_NEG                 // unary -
 )
 
 // AST node type
@@ -168,6 +169,12 @@ func newBinary(kind NodeKind, lhs *Node, rhs *Node) *Node {
 	node := newNode(kind)
 	node.lhs = lhs
 	node.rhs = rhs
+	return node
+}
+
+func newUnary(kind NodeKind, expr *Node) *Node {
+	node := newNode(kind)
+	node.lhs = expr
 	return node
 }
 
@@ -198,25 +205,39 @@ func expr(rest **Token, tok *Token) *Node {
 	}
 }
 
-// mul = primary ("*" primary | "/" primary)*
+// mul = unary ("*" unary | "/" unary)*
 
 func mul(rest **Token, tok *Token) *Node {
-	node := primary(&tok, tok)
+	node := unary(&tok, tok)
 
 	for {
 		if equal(tok, "*") {
-			node = newBinary(ND_MUL, node, mul(&tok, tok.next))
+			node = newBinary(ND_MUL, node, unary(&tok, tok.next))
 			continue
 		}
 
 		if equal(tok, "/") {
-			node = newBinary(ND_DIV, node, mul(&tok, tok.next))
+			node = newBinary(ND_DIV, node, unary(&tok, tok.next))
 			continue
 		}
 
 		*rest = tok
 		return node
 	}
+}
+
+// unary = ("+" | "-") unary
+//       | primary
+
+func unary(rest **Token, tok *Token) *Node {
+	if equal(tok, "+") {
+		return unary(rest, tok.next)
+	}
+	if equal(tok, "-") {
+		return newUnary(ND_NEG, unary(rest, tok.next))
+	}
+
+	return primary(rest, tok)
 }
 
 // primary = "(" expr ")" | num
@@ -255,8 +276,13 @@ func pop(arg string) {
 }
 
 func genExpr(node *Node) {
-	if node.kind == ND_NUM {
+	switch node.kind {
+	case ND_NUM:
 		fmt.Printf("  mov rax, %d\n", node.val)
+		return
+	case ND_NEG:
+		genExpr(node.lhs)
+		fmt.Printf("  neg rax\n")
 		return
 	}
 
