@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"unicode"
 )
 
@@ -73,12 +74,36 @@ func getNumber(tok *Token) (int, error) {
 }
 
 // Create a new token.
-func newToken(kind TokenKind, start int) *Token {
+func newToken(kind TokenKind, start, punct_len int) *Token {
 	tok := &Token{
 		kind: kind,
 		loc:  start,
+		len:  punct_len,
 	}
 	return tok
+}
+
+func isPunct(idx int) bool {
+	return string(currentInput[idx]) == "+" || string(currentInput[idx]) == "-" ||
+		string(currentInput[idx]) == "*" || string(currentInput[idx]) == "/" ||
+		string(currentInput[idx]) == "(" || string(currentInput[idx]) == ")" ||
+		string(currentInput[idx]) == "<" || string(currentInput[idx]) == ">"
+}
+
+func startswith(p, q string) bool {
+	return strings.HasPrefix(p, q)
+}
+
+func readPunct(idx int) int {
+	p := string(currentInput[idx:min(len(currentInput), idx+2)])
+	if startswith(p, "==") || startswith(p, "!=") ||
+		startswith(p, "<=") || startswith(p, ">=") {
+		return 2
+	}
+	if isPunct(idx) {
+		return 1
+	}
+	return 0
 }
 
 // Tokenize `currentInput` and returns new tokens.
@@ -94,7 +119,7 @@ func tokenize() (*Token, error) {
 			continue
 		}
 		if unicode.IsDigit(rune(currentInput[idx])) {
-			cur.next = newToken(TK_NUM, idx)
+			cur.next = newToken(TK_NUM, idx, 0)
 			cur = cur.next
 			tmp := idx
 			cur.val, idx, err = extractNum(idx)
@@ -105,20 +130,16 @@ func tokenize() (*Token, error) {
 			cur.len = idx - tmp
 			continue
 		}
-		if string(currentInput[idx]) == "+" || string(currentInput[idx]) == "-" ||
-			string(currentInput[idx]) == "*" || string(currentInput[idx]) == "/" ||
-			string(currentInput[idx]) == "(" || string(currentInput[idx]) == ")" {
-			cur.next = newToken(TK_PUNCT, idx)
+		if punctLen := readPunct(idx); punctLen >= 1 {
+			cur.next = newToken(TK_PUNCT, idx, punctLen)
 			cur = cur.next
-			cur.len = 1
-			idx++
+			idx += punctLen
 			continue
 		}
 		errorAt(idx, "invalid token: %s", string(currentInput[idx]))
 	}
-	cur.next = newToken(TK_EOF, idx)
+	cur.next = newToken(TK_EOF, idx, 0)
 	cur = cur.next
-	cur.len = 0
 	return head.next, nil
 }
 
@@ -148,6 +169,10 @@ const (
 	ND_DIV                 // /
 	ND_NUM                 // Integer
 	ND_NEG                 // unary -
+	ND_EQ                  // ==
+	ND_NE                  // !=
+	ND_LT                  // <
+	ND_LE                  // <=
 )
 
 // AST node type
@@ -184,9 +209,61 @@ func newNum(val int) *Node {
 	return node
 }
 
-// expr = mul ("+" mul | "-" mul)*
+// expr = equality
 
 func expr(rest **Token, tok *Token) *Node {
+	return equality(rest, tok)
+}
+
+// equality = relational ("==" relational | "!=" relational)*
+
+func equality(rest **Token, tok *Token) *Node {
+	node := relational(&tok, tok)
+
+	for {
+		if equal(tok, "==") {
+			node = newBinary(ND_EQ, node, relational(&tok, tok.next))
+			continue
+		}
+		if equal(tok, "!=") {
+			node = newBinary(ND_NE, node, relational(&tok, tok.next))
+			continue
+		}
+		*rest = tok
+		return node
+	}
+}
+
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+
+func relational(rest **Token, tok *Token) *Node {
+	node := add(&tok, tok)
+
+	for {
+		if equal(tok, "<") {
+			node = newBinary(ND_LT, node, add(&tok, tok.next))
+			continue
+		}
+		if equal(tok, "<=") {
+			node = newBinary(ND_LE, node, add(&tok, tok.next))
+			continue
+		}
+		if equal(tok, ">") {
+			node = newBinary(ND_LT, add(&tok, tok.next), node)
+			continue
+		}
+		if equal(tok, ">=") {
+			node = newBinary(ND_LE, add(&tok, tok.next), node)
+			continue
+		}
+		*rest = tok
+		return node
+	}
+}
+
+// add = mul ("+" mul | "-" mul)*
+
+func add(rest **Token, tok *Token) *Node {
 	node := mul(&tok, tok)
 
 	for {
@@ -275,6 +352,12 @@ func pop(arg string) {
 	depth--
 }
 
+func cmp(cmd string) {
+	fmt.Printf("  cmp rax, rdi\n")
+	fmt.Printf("  %s al\n", cmd)
+	fmt.Printf("  movzb rax, al\n")
+}
+
 func genExpr(node *Node) {
 	switch node.kind {
 	case ND_NUM:
@@ -304,6 +387,18 @@ func genExpr(node *Node) {
 	case ND_DIV:
 		fmt.Printf("  cqo\n")
 		fmt.Printf("  idiv rdi\n")
+		return
+	case ND_EQ:
+		cmp("sete")
+		return
+	case ND_NE:
+		cmp("setne")
+		return
+	case ND_LT:
+		cmp("setl")
+		return
+	case ND_LE:
+		cmp("setle")
 		return
 	}
 
