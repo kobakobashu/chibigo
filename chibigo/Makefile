@@ -1,12 +1,14 @@
 CFLAGS=-std=c11 -g -static
 
-chibigo: main.go
-	go build -o chibigo main.go
+PROJECT_NAME = chibigo
+
+chibigo:
+	go build -o $(PROJECT_NAME)
 
 test: chibigo
 	./test.sh
 
 clean:
-	rm -f chibigo *.o *~ tmp*
+	rm -f $(PROJECT_NAME) *.o *~ tmp*
 
 .PHONY: test clean
