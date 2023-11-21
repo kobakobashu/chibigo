@@ -107,7 +107,8 @@ func readPunct(idx int) int {
 }
 
 // Tokenize `currentInput` and returns new tokens.
-func tokenize() (*Token, error) {
+func tokenize(input string) (*Token, error) {
+	currentInput = input
 	head := Token{}
 	cur := &head
 

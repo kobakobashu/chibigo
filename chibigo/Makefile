@@ -2,7 +2,9 @@ CFLAGS=-std=c11 -g -static
 
 PROJECT_NAME = chibigo
 
-chibigo:
+SRCS=$(wildcard *.go)
+
+chibigo: $(SRCS)
 	go build -o $(PROJECT_NAME)
 
 test: chibigo

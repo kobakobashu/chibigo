@@ -73,3 +73,17 @@ func genExpr(node *Node) {
 	errorf("invalid expression")
 	return
 }
+
+func codegen(node *Node) {
+	fmt.Printf(".intel_syntax noprefix\n")
+	fmt.Printf(".globl main\n")
+	fmt.Printf("main:\n")
+
+	// Traverse the AST to emit assembly.
+	genExpr(node)
+	fmt.Printf("  ret\n")
+
+	if depth != 0 {
+		panic("Depth is not zero")
+	}
+}

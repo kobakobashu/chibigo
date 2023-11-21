@@ -11,29 +11,14 @@ func main() {
 		return
 	}
 
-	currentInput = os.Args[1]
-	tok, err := tokenize()
+	tok, err := tokenize(os.Args[1])
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
 
-	node := expr(&tok, tok)
+	node := parse(tok)
 
-	if tok.kind != TK_EOF {
-		errorTok(tok, "extra token")
-	}
-
-	fmt.Printf(".intel_syntax noprefix\n")
-	fmt.Printf(".globl main\n")
-	fmt.Printf("main:\n")
-
-	// Traverse the AST to emit assembly.
-	genExpr(node)
-	fmt.Printf("  ret\n")
-
-	if depth != 0 {
-		panic("Depth is not zero")
-	}
+	codegen(node)
 }
