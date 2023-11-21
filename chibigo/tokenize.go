@@ -87,7 +87,8 @@ func isPunct(idx int) bool {
 	return string(currentInput[idx]) == "+" || string(currentInput[idx]) == "-" ||
 		string(currentInput[idx]) == "*" || string(currentInput[idx]) == "/" ||
 		string(currentInput[idx]) == "(" || string(currentInput[idx]) == ")" ||
-		string(currentInput[idx]) == "<" || string(currentInput[idx]) == ">"
+		string(currentInput[idx]) == "<" || string(currentInput[idx]) == ">" ||
+		string(currentInput[idx]) == ";"
 }
 
 func startswith(p, q string) bool {

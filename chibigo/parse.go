@@ -7,22 +7,24 @@ package main
 type NodeKind int
 
 const (
-	ND_ADD NodeKind = iota // +
-	ND_SUB                 // -
-	ND_MUL                 // *
-	ND_DIV                 // /
-	ND_NUM                 // Integer
-	ND_NEG                 // unary -
-	ND_EQ                  // ==
-	ND_NE                  // !=
-	ND_LT                  // <
-	ND_LE                  // <=
+	ND_ADD       NodeKind = iota // +
+	ND_SUB                       // -
+	ND_MUL                       // *
+	ND_DIV                       // /
+	ND_NUM                       // Integer
+	ND_NEG                       // unary -
+	ND_EQ                        // ==
+	ND_NE                        // !=
+	ND_LT                        // <
+	ND_LE                        // <=
+	ND_EXPR_STMT                 // Expression statement
 )
 
 // AST node type
 
 type Node struct {
 	kind NodeKind
+	next *Node
 	lhs  *Node
 	rhs  *Node
 	val  int
@@ -50,6 +52,20 @@ func newUnary(kind NodeKind, expr *Node) *Node {
 func newNum(val int) *Node {
 	node := newNode(ND_NUM)
 	node.val = val
+	return node
+}
+
+// stmt = expr-stmt
+
+func stmt(rest **Token, tok *Token) *Node {
+	return exprStmt(rest, tok)
+}
+
+// expr-stmt = expr ";"
+
+func exprStmt(rest **Token, tok *Token) *Node {
+	node := newUnary(ND_EXPR_STMT, expr(&tok, tok))
+	*rest = skip(tok, ";")
 	return node
 }
 
@@ -180,12 +196,15 @@ func primary(rest **Token, tok *Token) *Node {
 	return nil
 }
 
-func parse(tok *Token) *Node {
-	node := expr(&tok, tok)
+// program = stmt*
 
-	if tok.kind != TK_EOF {
-		errorTok(tok, "extra token")
+func parse(tok *Token) *Node {
+	head := Node{}
+	cur := &head
+	for tok.kind != TK_EOF {
+		cur.next = stmt(&tok, tok)
+		cur = cur.next
 	}
 
-	return node
+	return head.next
 }

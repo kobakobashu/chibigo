@@ -74,16 +74,28 @@ func genExpr(node *Node) {
 	return
 }
 
+func genStmt(node *Node) {
+	if node.kind == ND_EXPR_STMT {
+		genExpr(node.lhs)
+		return
+	}
+
+	errorf("invalid statement")
+	return
+}
+
 func codegen(node *Node) {
 	fmt.Printf(".intel_syntax noprefix\n")
 	fmt.Printf(".globl main\n")
 	fmt.Printf("main:\n")
 
-	// Traverse the AST to emit assembly.
-	genExpr(node)
-	fmt.Printf("  ret\n")
-
-	if depth != 0 {
-		panic("Depth is not zero")
+	for n := node; n != nil; n = n.next {
+		// Traverse the AST to emit assembly.
+		genStmt(n)
+		if depth != 0 {
+			panic("Depth is not zero")
+		}
 	}
+
+	fmt.Printf("  ret\n")
 }
