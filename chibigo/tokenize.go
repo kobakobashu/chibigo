@@ -17,6 +17,7 @@ type TokenKind int
 
 const (
 	TK_PUNCT TokenKind = iota // Punctuators
+	TK_IDENT                  // Identifiers
 	TK_NUM                    // Numeric literals
 	TK_EOF                    // End-of-file markers
 )
@@ -88,7 +89,7 @@ func isPunct(idx int) bool {
 		string(currentInput[idx]) == "*" || string(currentInput[idx]) == "/" ||
 		string(currentInput[idx]) == "(" || string(currentInput[idx]) == ")" ||
 		string(currentInput[idx]) == "<" || string(currentInput[idx]) == ">" ||
-		string(currentInput[idx]) == ";"
+		string(currentInput[idx]) == ";" || string(currentInput[idx]) == "="
 }
 
 func startswith(p, q string) bool {
@@ -130,6 +131,12 @@ func tokenize(input string) (*Token, error) {
 				return nil, err
 			}
 			cur.len = idx - tmp
+			continue
+		}
+		if 'a' <= currentInput[idx] && currentInput[idx] <= 'z' {
+			cur.next = newToken(TK_IDENT, idx, 1)
+			cur = cur.next
+			idx++
 			continue
 		}
 		if punctLen := readPunct(idx); punctLen >= 1 {

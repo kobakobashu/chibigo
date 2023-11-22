@@ -18,16 +18,19 @@ const (
 	ND_LT                        // <
 	ND_LE                        // <=
 	ND_EXPR_STMT                 // Expression statement
+	ND_ASSIGN                    // =
+	ND_VAR                       // Variable
 )
 
 // AST node type
 
 type Node struct {
-	kind NodeKind
-	next *Node
-	lhs  *Node
-	rhs  *Node
-	val  int
+	kind NodeKind // Node kind
+	next *Node    // Next node
+	lhs  *Node    // Left-hand side
+	rhs  *Node    // Right-hand side
+	name string   // Used if kind == ND_VAR
+	val  int      // Used if kind == ND_NUM
 }
 
 func newNode(kind NodeKind) *Node {
@@ -55,6 +58,12 @@ func newNum(val int) *Node {
 	return node
 }
 
+func newVarNode(idx int) *Node {
+	node := newNode(ND_VAR)
+	node.name = string(currentInput[idx])
+	return node
+}
+
 // stmt = expr-stmt
 
 func stmt(rest **Token, tok *Token) *Node {
@@ -69,10 +78,21 @@ func exprStmt(rest **Token, tok *Token) *Node {
 	return node
 }
 
-// expr = equality
+// expr = assign
 
 func expr(rest **Token, tok *Token) *Node {
-	return equality(rest, tok)
+	return assign(rest, tok)
+}
+
+// assign = equality ("=" assign)?
+
+func assign(rest **Token, tok *Token) *Node {
+	node := equality(&tok, tok)
+	if equal(tok, "=") {
+		node = newBinary(ND_ASSIGN, node, assign(&tok, tok.next))
+	}
+	*rest = tok
+	return node
 }
 
 // equality = relational ("==" relational | "!=" relational)*
@@ -177,12 +197,18 @@ func unary(rest **Token, tok *Token) *Node {
 	return primary(rest, tok)
 }
 
-// primary = "(" expr ")" | num
+// primary = "(" expr ")" | ident | num
 
 func primary(rest **Token, tok *Token) *Node {
 	if equal(tok, "(") {
 		node := expr(&tok, tok.next)
 		*rest = skip(tok, ")")
+		return node
+	}
+
+	if tok.kind == TK_IDENT {
+		node := newVarNode(tok.loc)
+		*rest = tok.next
 		return node
 	}
 
