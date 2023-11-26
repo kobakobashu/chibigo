@@ -26,14 +26,19 @@ func cmp(cmd string) {
 	fmt.Printf("  movzb rax, al\n")
 }
 
+// Round up `n` to the nearest multiple of `align`. For instance,
+// align_to(5, 8) returns 8 and align_to(11, 8) returns 16.
+
+func alignTo(n int, align int) int {
+	return (n + align - 1) / align * align
+}
+
 // Compute the absolute address of a given node.
 // It's an error if a given node does not reside in memory.
 
 func genAddr(node *Node) {
 	if node.kind == ND_VAR {
-		///
-		offset := (int(node.name[0]) - int('a') + 1) * 8
-		fmt.Printf("  lea rax, %d[rbp]\n", -offset)
+		fmt.Printf("  lea rax, %d[rbp]\n", node.vr.offset)
 		return
 	}
 
@@ -109,16 +114,29 @@ func genStmt(node *Node) {
 	return
 }
 
-func codegen(node *Node) {
+// Assign offsets to local variables.
+
+func assignLvarOffsets(prog *Function) {
+	offset := 0
+	for vr := prog.locals; vr != nil; vr = vr.next {
+		offset += 8
+		vr.offset = -offset
+	}
+	prog.stackSize = alignTo(offset, 16)
+}
+
+func codegen(prog *Function) {
+	assignLvarOffsets(prog)
+
 	fmt.Printf(".intel_syntax noprefix\n")
 	fmt.Printf(".globl main\n")
 	fmt.Printf("main:\n")
 
 	fmt.Printf("  push rbp\n")
 	fmt.Printf("  mov rbp, rsp\n")
-	fmt.Printf("  sub rsp, 208\n")
+	fmt.Printf("  sub rsp, %d\n", prog.stackSize)
 
-	for n := node; n != nil; n = n.next {
+	for n := prog.body; n != nil; n = n.next {
 		// Traverse the AST to emit assembly.
 		genStmt(n)
 		if depth != 0 {

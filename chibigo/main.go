@@ -18,7 +18,8 @@ func main() {
 		return
 	}
 
-	node := parse(tok)
+	prog := parse(tok)
 
-	codegen(node)
+	// Traverse the AST to emit assembly.
+	codegen(prog)
 }

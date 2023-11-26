@@ -108,6 +108,20 @@ func readPunct(idx int) int {
 	return 0
 }
 
+// Returns true if c is valid as the first character of an identifier.
+
+func isIdent1(idx int) bool {
+	return 'a' <= currentInput[idx] && currentInput[idx] <= 'z' ||
+		'A' <= currentInput[idx] && currentInput[idx] <= 'Z' ||
+		currentInput[idx] == '_'
+}
+
+// Returns true if c is valid as a non-first character of an identifier.
+
+func isIdent2(idx int) bool {
+	return isIdent1(idx) || '0' <= currentInput[idx] && currentInput[idx] <= '9'
+}
+
 // Tokenize `currentInput` and returns new tokens.
 func tokenize(input string) (*Token, error) {
 	currentInput = input
@@ -133,10 +147,14 @@ func tokenize(input string) (*Token, error) {
 			cur.len = idx - tmp
 			continue
 		}
-		if 'a' <= currentInput[idx] && currentInput[idx] <= 'z' {
-			cur.next = newToken(TK_IDENT, idx, 1)
-			cur = cur.next
+		if isIdent1(idx) {
+			start := idx
 			idx++
+			for isIdent2(idx) {
+				idx++
+			}
+			cur.next = newToken(TK_IDENT, start, idx-start)
+			cur = cur.next
 			continue
 		}
 		if punctLen := readPunct(idx); punctLen >= 1 {
