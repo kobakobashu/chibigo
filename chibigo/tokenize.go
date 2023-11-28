@@ -16,10 +16,11 @@ import (
 type TokenKind int
 
 const (
-	TK_PUNCT TokenKind = iota // Punctuators
-	TK_IDENT                  // Identifiers
-	TK_NUM                    // Numeric literals
-	TK_EOF                    // End-of-file markers
+	TK_PUNCT   TokenKind = iota // Punctuators
+	TK_IDENT                    // Identifiers
+	TK_NUM                      // Numeric literals
+	TK_EOF                      // End-of-file markers
+	TK_KEYWORD                  // Keywords
 )
 
 type Token struct {
@@ -122,6 +123,20 @@ func isIdent2(idx int) bool {
 	return isIdent1(idx) || '0' <= currentInput[idx] && currentInput[idx] <= '9'
 }
 
+// static void convert_keywords(Token *tok) {
+// 	for (Token *t = tok; t->kind != TK_EOF; t = t->next)
+// 	  if (equal(t, "return"))
+// 		t->kind = TK_KEYWORD;
+//   }
+
+func convertKeywords(tok *Token) {
+	for t := tok; t.kind != TK_EOF; t = t.next {
+		if equal(t, "return") {
+			t.kind = TK_KEYWORD
+		}
+	}
+}
+
 // Tokenize `currentInput` and returns new tokens.
 func tokenize(input string) (*Token, error) {
 	currentInput = input
@@ -147,6 +162,7 @@ func tokenize(input string) (*Token, error) {
 			cur.len = idx - tmp
 			continue
 		}
+		// Identifier or keyword
 		if isIdent1(idx) {
 			start := idx
 			idx++
@@ -167,6 +183,7 @@ func tokenize(input string) (*Token, error) {
 	}
 	cur.next = newToken(TK_EOF, idx, 0)
 	cur = cur.next
+	convertKeywords(head.next)
 	return head.next, nil
 }
 

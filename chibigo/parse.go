@@ -24,6 +24,7 @@ const (
 	ND_EXPR_STMT                 // Expression statement
 	ND_ASSIGN                    // =
 	ND_VAR                       // Variable
+	ND_RETURN                    // "return"
 )
 
 // AST node type
@@ -99,9 +100,15 @@ func newLvar(name string) *Obj {
 	return vr
 }
 
-// stmt = expr-stmt
+// stmt = "return" expr ";"
+//      | expr-stmt
 
 func stmt(rest **Token, tok *Token) *Node {
+	if equal(tok, "return") {
+		node := newUnary(ND_RETURN, expr(&tok, tok.next))
+		*rest = skip(tok, ";")
+		return node
+	}
 	return exprStmt(rest, tok)
 }
 
