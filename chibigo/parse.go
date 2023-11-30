@@ -135,8 +135,14 @@ func componentStmt(rest **Token, tok *Token) *Node {
 }
 
 // expr-stmt = expr ";"
+// expr-stmt = expr? ";"
 
 func exprStmt(rest **Token, tok *Token) *Node {
+	if equal(tok, ";") {
+		*rest = tok.next
+		return newNode(ND_BLOCK)
+	}
+
 	node := newUnary(ND_EXPR_STMT, expr(&tok, tok))
 	*rest = skip(tok, ";")
 	return node
