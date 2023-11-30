@@ -25,6 +25,7 @@ const (
 	ND_ASSIGN                    // =
 	ND_VAR                       // Variable
 	ND_RETURN                    // "return"
+	ND_BLOCK                     // { ... }
 )
 
 // AST node type
@@ -35,7 +36,8 @@ type Node struct {
 	lhs  *Node    // Left-hand side
 	rhs  *Node    // Right-hand side
 	vr   *Obj
-	val  int // Used if kind == ND_NUM
+	val  int   // Used if kind == ND_NUM
+	body *Node // Block
 }
 
 type Obj struct {
@@ -101,6 +103,7 @@ func newLvar(name string) *Obj {
 }
 
 // stmt = "return" expr ";"
+//      | "{" compound-stmt
 //      | expr-stmt
 
 func stmt(rest **Token, tok *Token) *Node {
@@ -109,7 +112,26 @@ func stmt(rest **Token, tok *Token) *Node {
 		*rest = skip(tok, ";")
 		return node
 	}
+	if equal(tok, "{") {
+		return componentStmt(rest, tok.next)
+	}
 	return exprStmt(rest, tok)
+}
+
+// compound-stmt = stmt* "}"
+
+func componentStmt(rest **Token, tok *Token) *Node {
+	head := new(Node)
+	cur := head
+	for !equal(tok, "}") {
+		cur.next = stmt(&tok, tok)
+		cur = cur.next
+	}
+
+	node := newNode(ND_BLOCK)
+	node.body = head.next
+	*rest = tok.next
+	return node
 }
 
 // expr-stmt = expr ";"
@@ -270,15 +292,10 @@ func primary(rest **Token, tok *Token) *Node {
 // program = stmt*
 
 func parse(tok *Token) *Function {
-	head := Node{}
-	cur := &head
-	for tok.kind != TK_EOF {
-		cur.next = stmt(&tok, tok)
-		cur = cur.next
-	}
+	tok = skip(tok, "{")
 
 	prog := new(Function)
-	prog.body = head.next
+	prog.body = componentStmt(&tok, tok)
 	prog.locals = locals
 
 	return prog

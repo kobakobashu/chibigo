@@ -106,6 +106,11 @@ func genExpr(node *Node) {
 
 func genStmt(node *Node) {
 	switch node.kind {
+	case ND_BLOCK:
+		for n := node.body; n != nil; n = n.next {
+			genStmt(n)
+		}
+		return
 	case ND_RETURN:
 		genExpr(node.lhs)
 		fmt.Printf("  jmp .L.return\n")
@@ -141,12 +146,9 @@ func codegen(prog *Function) {
 	fmt.Printf("  mov rbp, rsp\n")
 	fmt.Printf("  sub rsp, %d\n", prog.stackSize)
 
-	for n := prog.body; n != nil; n = n.next {
-		// Traverse the AST to emit assembly.
-		genStmt(n)
-		if depth != 0 {
-			panic("Depth is not zero")
-		}
+	genStmt(prog.body)
+	if depth != 0 {
+		panic("Depth is not zero")
 	}
 
 	fmt.Printf(".L.return:\n")
