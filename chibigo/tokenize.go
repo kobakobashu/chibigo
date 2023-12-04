@@ -62,7 +62,7 @@ func equal(tok *Token, op string) bool {
 // Ensure that the current token is `s`.
 func skip(tok *Token, op string) *Token {
 	if !equal(tok, op) {
-		errorf("expected '%s", op)
+		errorTok(tok, "expected %s", op)
 	}
 	return tok.next
 }
@@ -124,15 +124,19 @@ func isIdent2(idx int) bool {
 	return isIdent1(idx) || '0' <= currentInput[idx] && currentInput[idx] <= '9'
 }
 
-// static void convert_keywords(Token *tok) {
-// 	for (Token *t = tok; t->kind != TK_EOF; t = t->next)
-// 	  if (equal(t, "return"))
-// 		t->kind = TK_KEYWORD;
-//   }
+func isKeyword(tok *Token) bool {
+	kw := []string{"return", "if", "else"}
+	for _, keyword := range kw {
+		if equal(tok, keyword) {
+			return true
+		}
+	}
+	return false
+}
 
 func convertKeywords(tok *Token) {
 	for t := tok; t.kind != TK_EOF; t = t.next {
-		if equal(t, "return") {
+		if isKeyword(t) {
 			t.kind = TK_KEYWORD
 		}
 	}

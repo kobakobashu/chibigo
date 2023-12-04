@@ -10,6 +10,16 @@ import (
 
 var depth int
 
+var counter = count()
+
+func count() func() int {
+	i := 0
+	return func() int {
+		i++
+		return i
+	}
+}
+
 func push() {
 	fmt.Printf("  push rax\n")
 	depth++
@@ -106,6 +116,19 @@ func genExpr(node *Node) {
 
 func genStmt(node *Node) {
 	switch node.kind {
+	case ND_IF:
+		c := counter()
+		genExpr(node.cond)
+		fmt.Printf("  cmp rax, 0\n")
+		fmt.Printf("  je  .L.else.%d\n", c)
+		genStmt(node.then)
+		fmt.Printf("  jmp .L.end.%d\n", c)
+		fmt.Printf(".L.else.%d:\n", c)
+		if node.els != nil {
+			genStmt(node.els)
+		}
+		fmt.Printf(".L.end.%d:\n", c)
+		return
 	case ND_BLOCK:
 		for n := node.body; n != nil; n = n.next {
 			genStmt(n)

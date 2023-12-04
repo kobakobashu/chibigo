@@ -26,6 +26,7 @@ const (
 	ND_VAR                       // Variable
 	ND_RETURN                    // "return"
 	ND_BLOCK                     // { ... }
+	ND_IF                        // "if"
 )
 
 // AST node type
@@ -38,6 +39,9 @@ type Node struct {
 	vr   *Obj
 	val  int   // Used if kind == ND_NUM
 	body *Node // Block
+	cond *Node // "if" statement
+	then *Node // "if" statement
+	els  *Node // "if" statement
 }
 
 type Obj struct {
@@ -103,6 +107,7 @@ func newLvar(name string) *Obj {
 }
 
 // stmt = "return" expr ";"
+//      | "if" expr "{" stmt "}" ("else" "{" stmt "}")?
 //      | "{" compound-stmt
 //      | expr-stmt
 
@@ -110,6 +115,16 @@ func stmt(rest **Token, tok *Token) *Node {
 	if equal(tok, "return") {
 		node := newUnary(ND_RETURN, expr(&tok, tok.next))
 		*rest = skip(tok, ";")
+		return node
+	}
+	if equal(tok, "if") {
+		node := newNode(ND_IF)
+		node.cond = expr(&tok, tok.next)
+		node.then = stmt(&tok, tok)
+		if equal(tok, "else") {
+			node.els = stmt(&tok, tok.next)
+		}
+		*rest = tok
 		return node
 	}
 	if equal(tok, "{") {
@@ -134,7 +149,6 @@ func componentStmt(rest **Token, tok *Token) *Node {
 	return node
 }
 
-// expr-stmt = expr ";"
 // expr-stmt = expr? ";"
 
 func exprStmt(rest **Token, tok *Token) *Node {
