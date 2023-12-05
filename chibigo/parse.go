@@ -27,6 +27,7 @@ const (
 	ND_RETURN                    // "return"
 	ND_BLOCK                     // { ... }
 	ND_IF                        // "if"
+	ND_FOR                       // "for"
 )
 
 // AST node type
@@ -42,6 +43,8 @@ type Node struct {
 	cond *Node // "if" statement
 	then *Node // "if" statement
 	els  *Node // "if" statement
+	init *Node // "for" statement
+	inc  *Node // "for" statement
 }
 
 type Obj struct {
@@ -108,6 +111,7 @@ func newLvar(name string) *Obj {
 
 // stmt = "return" expr ";"
 //      | "if" expr "{" stmt "}" ("else" "{" stmt "}")?
+//      | "for" expr ";" expr ";" expr "{" stmt "}"
 //      | "{" compound-stmt
 //      | expr-stmt
 
@@ -124,6 +128,17 @@ func stmt(rest **Token, tok *Token) *Node {
 		if equal(tok, "else") {
 			node.els = stmt(&tok, tok.next)
 		}
+		*rest = tok
+		return node
+	}
+	if equal(tok, "for") {
+		node := newNode(ND_FOR)
+		node.init = expr(&tok, tok.next)
+		tok = skip(tok, ";")
+		node.cond = expr(&tok, tok)
+		tok = skip(tok, ";")
+		node.inc = expr(&tok, tok)
+		node.then = stmt(&tok, tok)
 		*rest = tok
 		return node
 	}
