@@ -131,7 +131,9 @@ func genStmt(node *Node) {
 		return
 	case ND_FOR:
 		c := counter()
-		genExpr(node.init)
+		if node.init != nil {
+			genExpr(node.init)
+		}
 		fmt.Printf(".L.begin.%d:\n", c)
 		if node.cond != nil {
 			genExpr(node.cond)
