@@ -112,6 +112,7 @@ func newLvar(name string) *Obj {
 // stmt = "return" expr ";"
 //      | "if" expr "{" stmt "}" ("else" "{" stmt "}")?
 //      | "for" (expr ";" expr ";" expr)? "{" stmt "}"
+//      | "for" expr "{" stmt "}"
 //      | "{" compound-stmt
 //      | expr-stmt
 
@@ -136,10 +137,17 @@ func stmt(rest **Token, tok *Token) *Node {
 		tok = tok.next
 		if !equal(tok, "{") {
 			node.init = expr(&tok, tok)
-			tok = skip(tok, ";")
-			node.cond = expr(&tok, tok)
-			tok = skip(tok, ";")
-			node.inc = expr(&tok, tok)
+			if equal(tok, ";") {
+				// for
+				tok = skip(tok, ";")
+				node.cond = expr(&tok, tok)
+				tok = skip(tok, ";")
+				node.inc = expr(&tok, tok)
+			} else {
+				// while
+				node.cond = node.init
+				node.init = nil
+			}
 		}
 		node.then = stmt(&tok, tok)
 		*rest = tok
