@@ -52,7 +52,7 @@ func genAddr(node *Node) {
 		return
 	}
 
-	errorf("not an lvalue")
+	errorTok(node.tok, "not an lvalue")
 }
 
 func genExpr(node *Node) {
@@ -110,7 +110,7 @@ func genExpr(node *Node) {
 		return
 	}
 
-	errorf("invalid expression")
+	errorTok(node.tok, "invalid expression")
 	return
 }
 
@@ -161,7 +161,7 @@ func genStmt(node *Node) {
 		return
 	}
 
-	errorf("invalid statement")
+	errorTok(node.tok, "invalid statement")
 	return
 }
 
