@@ -47,8 +47,12 @@ func alignTo(n int, align int) int {
 // It's an error if a given node does not reside in memory.
 
 func genAddr(node *Node) {
-	if node.kind == ND_VAR {
+	switch node.kind {
+	case ND_VAR:
 		fmt.Printf("  lea rax, %d[rbp]\n", node.vr.offset)
+		return
+	case ND_DEREF:
+		genExpr(node.lhs)
 		return
 	}
 
@@ -67,6 +71,13 @@ func genExpr(node *Node) {
 	case ND_VAR:
 		genAddr(node)
 		fmt.Printf("  mov rax, [rax]\n")
+		return
+	case ND_DEREF:
+		genExpr(node.lhs)
+		fmt.Printf("  mov rax, [rax]\n")
+		return
+	case ND_ADDR:
+		genAddr(node.lhs)
 		return
 	case ND_ASSIGN:
 		genAddr(node.lhs)

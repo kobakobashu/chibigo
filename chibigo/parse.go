@@ -23,6 +23,8 @@ const (
 	ND_LE                        // <=
 	ND_EXPR_STMT                 // Expression statement
 	ND_ASSIGN                    // =
+	ND_ADDR                      // unary &
+	ND_DEREF                     // unary *
 	ND_VAR                       // Variable
 	ND_RETURN                    // "return"
 	ND_BLOCK                     // { ... }
@@ -302,7 +304,7 @@ func mul(rest **Token, tok *Token) *Node {
 	}
 }
 
-// unary = ("+" | "-") unary
+// unary = ("+" | "-" | "*" | "&") unary
 //       | primary
 
 func unary(rest **Token, tok *Token) *Node {
@@ -311,6 +313,12 @@ func unary(rest **Token, tok *Token) *Node {
 	}
 	if equal(tok, "-") {
 		return newUnary(ND_NEG, unary(rest, tok.next), tok)
+	}
+	if equal(tok, "&") {
+		return newUnary(ND_ADDR, unary(rest, tok.next), tok)
+	}
+	if equal(tok, "*") {
+		return newUnary(ND_DEREF, unary(rest, tok.next), tok)
 	}
 
 	return primary(rest, tok)
