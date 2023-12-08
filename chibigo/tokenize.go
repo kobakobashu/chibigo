@@ -75,6 +75,15 @@ func getNumber(tok *Token) (int, error) {
 	return tok.val, nil
 }
 
+func consume(rest **Token, tok *Token, str string) bool {
+	if equal(tok, str) {
+		*rest = tok.next
+		return true
+	}
+	*rest = tok
+	return false
+}
+
 // Create a new token.
 func newToken(kind TokenKind, start, punct_len int) *Token {
 	tok := &Token{
@@ -126,7 +135,7 @@ func isIdent2(idx int) bool {
 }
 
 func isKeyword(tok *Token) bool {
-	kw := []string{"return", "if", "else", "for"}
+	kw := []string{"return", "if", "else", "for", "int"}
 	for _, keyword := range kw {
 		if equal(tok, keyword) {
 			return true
