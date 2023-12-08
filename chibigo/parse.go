@@ -37,6 +37,7 @@ const (
 type Node struct {
 	kind NodeKind // Node kind
 	next *Node    // Next node
+	ty   *Type    // Type, e.g. int or pointer to int
 	tok  *Token   // Representative token
 	lhs  *Node    // Left-hand side
 	rhs  *Node    // Right-hand side
@@ -260,6 +261,42 @@ func relational(rest **Token, tok *Token) *Node {
 	}
 }
 
+// In Go, '+' and '-' operators are not overloaded to perform the pointer arithmetic
+
+func newAdd(lhs *Node, rhs *Node, tok *Token) *Node {
+	addType(lhs)
+	addType(rhs)
+
+	// num + num
+	if isInteger(lhs.ty) && isInteger(rhs.ty) {
+		return newBinary(ND_ADD, lhs, rhs, tok)
+	}
+
+	if lhs.ty.base != nil || rhs.ty.base != nil {
+		errorTok(tok, "invalid operands: pointer arithmetic is not supported in Go")
+	}
+
+	errorTok(tok, "invalid operands")
+	return nil
+}
+
+func newSub(lhs *Node, rhs *Node, tok *Token) *Node {
+	addType(lhs)
+	addType(rhs)
+
+	// num + num
+	if isInteger(lhs.ty) && isInteger(rhs.ty) {
+		return newBinary(ND_SUB, lhs, rhs, tok)
+	}
+
+	if lhs.ty.base != nil || rhs.ty.base != nil {
+		errorTok(tok, "invalid operands: pointer arithmetic is not supported in Go")
+	}
+
+	errorTok(tok, "invalid operands")
+	return nil
+}
+
 // add = mul ("+" mul | "-" mul)*
 
 func add(rest **Token, tok *Token) *Node {
@@ -268,12 +305,12 @@ func add(rest **Token, tok *Token) *Node {
 	for {
 		start := tok
 		if equal(tok, "+") {
-			node = newBinary(ND_ADD, node, mul(&tok, tok.next), start)
+			node = newAdd(node, mul(&tok, tok.next), start)
 			continue
 		}
 
 		if equal(tok, "-") {
-			node = newBinary(ND_SUB, node, mul(&tok, tok.next), start)
+			node = newSub(node, mul(&tok, tok.next), start)
 			continue
 		}
 
