@@ -130,37 +130,47 @@ func declspec(rest **Token, tok *Token) *Type {
 	return tyInt
 }
 
-// declarator = "*"* ident
+// declarator = "*"* declspec
 
-func declarator(rest **Token, tok *Token, ty *Type) *Type {
+func declarator(rest **Token, tok *Token) *Type {
+	tmp := tok
+	for equal(tmp, "*") {
+		tmp = tmp.next
+	}
+
+	ty := declspec(&tmp, tmp)
 	for consume(&tok, tok, "*") {
 		ty = pointerTo(ty)
 	}
-	if tok.kind != TK_IDENT {
-		errorTok(tok, "expected a variable name")
-	}
 
-	ty.name = tok
-	*rest = tok.next
+	*rest = tmp
 	return ty
 }
 
-// declaration = declspec (declarator ("=" expr)? ("," declarator ("=" expr)?)*)? ";"
+// declaration = "var" declarator ("=" expr)? ";"
 
 func declaration(rest **Token, tok *Token) *Node {
-	basety := declspec(&tok, tok)
-
-	head := new(Node)
-	cur := head
+	tok = skip(tok, "var")
+	vrs_head := new(Node)
+	vrs_cur := vrs_head
 	i := 0
 
-	for !equal(tok, ";") {
+	for tok.kind == TK_IDENT {
 		if i > 0 {
 			tok = skip(tok, ",")
-			i++
 		}
-		ty := declarator(&tok, tok, basety)
-		vr := newLvar(getIdent(ty.name), ty)
+		vrs := newNode(ND_VAR, tok)
+		vrs_cur.next = vrs
+		vrs_cur = vrs_cur.next
+		tok = tok.next
+		i++
+	}
+
+	ty := declarator(&tok, tok)
+	head := new(Node)
+	cur := head
+	for vr_cur := vrs_head.next; vr_cur != nil; vr_cur = vr_cur.next {
+		vr := newLvar(getIdent(vr_cur.tok), ty)
 
 		if !equal(tok, "=") {
 			continue
@@ -237,7 +247,7 @@ func componentStmt(rest **Token, tok *Token) *Node {
 	head := new(Node)
 	cur := head
 	for !equal(tok, "}") {
-		if equal(tok, "int") {
+		if equal(tok, "var") {
 			cur.next = declaration(&tok, tok)
 			cur = cur.next
 		} else {

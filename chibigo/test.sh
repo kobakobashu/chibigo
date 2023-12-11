@@ -46,15 +46,13 @@ assert 1 '{ return 1>=0; }'
 assert 1 '{ return 1>=1; }'
 assert 0 '{ return 1>=2; }'
 
-assert 3 '{ int a; a=3; return a; }'
-assert 3 '{ int a=3; return a; }'
-assert 8 '{ int a=3; int z=5; return a+z; }'
+assert 3 '{ var a int; a=3; return a; }'
+assert 3 '{ var a int=3; return a; }'
+assert 8 '{ var a int=3; var z int=5; return a+z; }'
 
-assert 3 '{ int a=3; return a; }'
-assert 8 '{ int a=3; int z=5; return a+z; }'
-assert 6 '{ int a; int b; a=b=3; return a+b; }'
-assert 3 '{ int foo=3; return foo; }'
-assert 8 '{ int foo123=3; int bar=5; return foo123+bar; }'
+assert 6 '{ var a int; var b int; a=b=3; return a+b; }'
+assert 3 '{ var foo int=3; return foo; }'
+assert 8 '{ var foo123 int=3; var bar int=5; return foo123+bar; }'
 
 assert 1 '{ return 1; 2; 3; }'
 assert 2 '{ 1; return 2; 3; }'
@@ -70,13 +68,13 @@ assert 2 '{ if 1-1 == 0 { return 2; }; return 3; }'
 assert 4 '{ if 1 == 0 { 1; 2; return 3; } else { return 4; } }'
 assert 3 '{ if 1 == 1 { 1; 2; return 3; } else { return 4; } }'
 
-assert 55 '{ int i=0; int j=0; for i=0; i<=10; i=i+1 { j=i+j; }; return j; }'
+assert 55 '{ var i int=0; var j int=0; for i=0; i<=10; i=i+1 { j=i+j; }; return j; }'
 assert 3 '{ for { return 3; } return 5; }'
 
-assert 10 '{ int i=0; for i<10 { i=i+1; }; return i; }'
+assert 10 '{ var i int=0; for i<10 { i=i+1; }; return i; }'
 
-assert 3 '{ int x=3; return *&x; }'
-assert 3 '{ int x=3; int *y=&x; int **z=&y; return **z; }'
-assert 5 '{ int x=3; int *y=&x; *y=5; return x; }'
+assert 3 '{ var x int=3; return *&x; }'
+assert 3 '{ var x int=3; var y *int=&x; var z **int=&y; return **z; }'
+assert 5 '{ var x int=3; var y *int=&x; *y=5; return x; }'
 
 echo OK
