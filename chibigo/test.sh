@@ -77,4 +77,7 @@ assert 3 '{ var x int=3; return *&x; }'
 assert 3 '{ var x int=3; var y *int=&x; var z **int=&y; return **z; }'
 assert 5 '{ var x int=3; var y *int=&x; *y=5; return x; }'
 
+assert 8 '{ var a, b int; a=3; b=5; return a+b; }'
+assert 8 '{ var a, b int=3, 5; return a+b; }'
+
 echo OK

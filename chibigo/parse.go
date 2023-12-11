@@ -147,39 +147,39 @@ func declarator(rest **Token, tok *Token) *Type {
 	return ty
 }
 
-// declaration = "var" declarator ("=" expr)? ";"
+// declaration = "var" (declarator(",")?)* ("=" (expr(",")?)*)? ";"
 
 func declaration(rest **Token, tok *Token) *Node {
 	tok = skip(tok, "var")
 	vrs_head := new(Node)
 	vrs_cur := vrs_head
-	i := 0
 
 	for tok.kind == TK_IDENT {
-		if i > 0 {
-			tok = skip(tok, ",")
-		}
 		vrs := newNode(ND_VAR, tok)
 		vrs_cur.next = vrs
 		vrs_cur = vrs_cur.next
 		tok = tok.next
-		i++
+		consume(&tok, tok, ",")
 	}
 
 	ty := declarator(&tok, tok)
 	head := new(Node)
 	cur := head
-	for vr_cur := vrs_head.next; vr_cur != nil; vr_cur = vr_cur.next {
-		vr := newLvar(getIdent(vr_cur.tok), ty)
+	if consume(&tok, tok, "=") {
+		for vr_cur := vrs_head.next; vr_cur != nil; vr_cur = vr_cur.next {
+			vr := newLvar(getIdent(vr_cur.tok), ty)
 
-		if !equal(tok, "=") {
-			continue
+			lhs := newVarNode(vr, ty.name)
+			rhs := assign(&tok, tok)
+			node := newBinary(ND_ASSIGN, lhs, rhs, tok)
+			cur.next = newUnary(ND_EXPR_STMT, node, tok)
+			cur = cur.next
+			consume(&tok, tok, ",")
 		}
-		lhs := newVarNode(vr, ty.name)
-		rhs := assign(&tok, tok.next)
-		node := newBinary(ND_ASSIGN, lhs, rhs, tok)
-		cur.next = newUnary(ND_EXPR_STMT, node, tok)
-		cur = cur.next
+	} else {
+		for vr_cur := vrs_head.next; vr_cur != nil; vr_cur = vr_cur.next {
+			newLvar(getIdent(vr_cur.tok), ty)
+		}
 	}
 
 	node := newNode(ND_BLOCK, tok)
