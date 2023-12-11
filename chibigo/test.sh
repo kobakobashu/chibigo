@@ -1,10 +1,15 @@
 #!/bin/bash
+cat <<EOF | gcc -xc -c -o tmp2.o -
+int ret3() { return 3; }
+int ret5() { return 5; }
+EOF
+
 assert() {
   expected="$1"
   input="$2"
 
   ./chibigo "$input" > tmp.s
-  cc -o tmp tmp.s
+  cc -o tmp tmp.s tmp2.o
   ./tmp
   actual="$?"
 
@@ -79,5 +84,8 @@ assert 5 '{ var x int=3; var y *int=&x; *y=5; return x; }'
 
 assert 8 '{ var a, b int; a=3; b=5; return a+b; }'
 assert 8 '{ var a, b int=3, 5; return a+b; }'
+
+assert 3 '{ return ret3(); }'
+assert 5 '{ return ret5(); }'
 
 echo OK

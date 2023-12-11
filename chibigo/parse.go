@@ -28,6 +28,7 @@ const (
 	ND_VAR                       // Variable
 	ND_RETURN                    // "return"
 	ND_BLOCK                     // { ... }
+	ND_FUNCALL                   // Function call
 	ND_IF                        // "if"
 	ND_FOR                       // "for"
 )
@@ -35,20 +36,21 @@ const (
 // AST node type
 
 type Node struct {
-	kind NodeKind // Node kind
-	next *Node    // Next node
-	ty   *Type    // Type, e.g. int or pointer to int
-	tok  *Token   // Representative token
-	lhs  *Node    // Left-hand side
-	rhs  *Node    // Right-hand side
-	vr   *Obj
-	val  int   // Used if kind == ND_NUM
-	body *Node // Block
-	cond *Node // "if" statement
-	then *Node // "if" statement
-	els  *Node // "if" statement
-	init *Node // "for" statement
-	inc  *Node // "for" statement
+	kind     NodeKind // Node kind
+	next     *Node    // Next node
+	ty       *Type    // Type, e.g. int or pointer to int
+	tok      *Token   // Representative token
+	lhs      *Node    // Left-hand side
+	rhs      *Node    // Right-hand side
+	vr       *Obj
+	val      int    // Used if kind == ND_NUM
+	body     *Node  // Block
+	funcname string // Function call
+	cond     *Node  // "if" statement
+	then     *Node  // "if" statement
+	els      *Node  // "if" statement
+	init     *Node  // "for" statement
+	inc      *Node  // "for" statement
 }
 
 type Obj struct {
@@ -440,7 +442,8 @@ func unary(rest **Token, tok *Token) *Node {
 	return primary(rest, tok)
 }
 
-// primary = "(" expr ")" | ident | num
+// primary = "(" expr ")" | ident args? | num
+// args = "(" ")"
 
 func primary(rest **Token, tok *Token) *Node {
 	if equal(tok, "(") {
@@ -450,6 +453,15 @@ func primary(rest **Token, tok *Token) *Node {
 	}
 
 	if tok.kind == TK_IDENT {
+		// Function call
+		if equal(tok.next, "(") {
+			node := newNode(ND_FUNCALL, tok)
+			node.funcname = currentInput[tok.loc : tok.loc+tok.len]
+			*rest = skip(tok.next.next, ")")
+			return node
+		}
+
+		// Variable
 		vr := findVar(tok)
 		if vr == nil {
 			errorTok(tok, "undefined variable")
