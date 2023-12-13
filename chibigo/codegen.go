@@ -9,6 +9,7 @@ import (
 //
 
 var depth int
+var argreg = []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 
 var counter = count()
 
@@ -87,6 +88,15 @@ func genExpr(node *Node) {
 		fmt.Printf("  mov [rdi], rax\n")
 		return
 	case ND_FUNCALL:
+		nargs := 0
+		for arg := node.args; arg != nil; arg = arg.next {
+			genExpr(arg)
+			push()
+			nargs++
+		}
+		for i := nargs - 1; i >= 0; i-- {
+			pop(argreg[i])
+		}
 		fmt.Printf("  mov rax, 0\n")
 		fmt.Printf("  call %s\n", node.funcname)
 		return

@@ -46,6 +46,7 @@ type Node struct {
 	val      int    // Used if kind == ND_NUM
 	body     *Node  // Block
 	funcname string // Function call
+	args     *Node  // Function args
 	cond     *Node  // "if" statement
 	then     *Node  // "if" statement
 	els      *Node  // "if" statement
@@ -442,8 +443,32 @@ func unary(rest **Token, tok *Token) *Node {
 	return primary(rest, tok)
 }
 
-// primary = "(" expr ")" | ident args? | num
-// args = "(" ")"
+// funcall = ident "(" (assign ("," assign)*)? ")"
+
+func funcall(rest **Token, tok *Token) *Node {
+	start := tok
+	tok = tok.next.next
+
+	head := new(Node)
+	cur := head
+
+	for !equal(tok, ")") {
+		if cur != head {
+			tok = skip(tok, ",")
+		}
+		cur.next = assign(&tok, tok)
+		cur = cur.next
+	}
+
+	*rest = skip(tok, ")")
+
+	node := newNode(ND_FUNCALL, start)
+	node.funcname = currentInput[start.loc : start.loc+start.len]
+	node.args = head.next
+	return node
+}
+
+// primary = "(" expr ")" | ident func-args? | num
 
 func primary(rest **Token, tok *Token) *Node {
 	if equal(tok, "(") {
@@ -455,10 +480,7 @@ func primary(rest **Token, tok *Token) *Node {
 	if tok.kind == TK_IDENT {
 		// Function call
 		if equal(tok.next, "(") {
-			node := newNode(ND_FUNCALL, tok)
-			node.funcname = currentInput[tok.loc : tok.loc+tok.len]
-			*rest = skip(tok.next.next, ")")
-			return node
+			return funcall(rest, tok)
 		}
 
 		// Variable
