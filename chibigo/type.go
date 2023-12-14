@@ -9,12 +9,14 @@ type TypeKind int
 const (
 	TY_INT TypeKind = iota
 	TY_PTR
+	TY_FUNC
 )
 
 type Type struct {
-	kind TypeKind
-	base *Type  // Pointer
-	name *Token // Declaration
+	kind     TypeKind
+	base     *Type  // Pointer
+	name     *Token // Declaration
+	returnTy *Type
 }
 
 var tyInt = &Type{kind: TY_INT}
@@ -27,6 +29,13 @@ func pointerTo(base *Type) *Type {
 	ty := new(Type)
 	ty.kind = TY_PTR
 	ty.base = base
+	return ty
+}
+
+func funcType(returnTy *Type) *Type {
+	ty := new(Type)
+	ty.kind = TY_FUNC
+	ty.returnTy = returnTy
 	return ty
 }
 

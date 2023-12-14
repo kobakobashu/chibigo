@@ -10,6 +10,7 @@ import (
 
 var depth int
 var argreg = []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+var current_fn *Function
 
 var counter = count()
 
@@ -179,7 +180,7 @@ func genStmt(node *Node) {
 		return
 	case ND_RETURN:
 		genExpr(node.lhs)
-		fmt.Printf("  jmp .L.return\n")
+		fmt.Printf("  jmp .L.return.%s\n", current_fn.name)
 		return
 	case ND_EXPR_STMT:
 		genExpr(node.lhs)
@@ -193,32 +194,40 @@ func genStmt(node *Node) {
 // Assign offsets to local variables.
 
 func assignLvarOffsets(prog *Function) {
-	offset := 0
-	for vr := prog.locals; vr != nil; vr = vr.next {
-		offset += 8
-		vr.offset = -offset
+	for fn := prog; fn != nil; fn = fn.next {
+		offset := 0
+		for vr := fn.locals; vr != nil; vr = vr.next {
+			offset += 8
+			vr.offset = -offset
+		}
+		fn.stackSize = alignTo(offset, 16)
 	}
-	prog.stackSize = alignTo(offset, 16)
 }
 
 func codegen(prog *Function) {
 	assignLvarOffsets(prog)
 
 	fmt.Printf(".intel_syntax noprefix\n")
-	fmt.Printf(".globl main\n")
-	fmt.Printf("main:\n")
+	for fn := prog; fn != nil; fn = fn.next {
+		fmt.Printf(".globl %s\n", fn.name)
+		fmt.Printf("%s:\n", fn.name)
+		current_fn = fn
 
-	fmt.Printf("  push rbp\n")
-	fmt.Printf("  mov rbp, rsp\n")
-	fmt.Printf("  sub rsp, %d\n", prog.stackSize)
+		// Prologue
+		fmt.Printf("  push rbp\n")
+		fmt.Printf("  mov rbp, rsp\n")
+		fmt.Printf("  sub rsp, %d\n", fn.stackSize)
 
-	genStmt(prog.body)
-	if depth != 0 {
-		panic("Depth is not zero")
+		// Emit code
+		genStmt(fn.body)
+		if depth != 0 {
+			panic("Depth is not zero")
+		}
+
+		// Epilogue
+		fmt.Printf(".L.return.%s:\n", fn.name)
+		fmt.Printf("  mov rsp, rbp\n")
+		fmt.Printf("  pop rbp\n")
+		fmt.Printf("  ret\n")
 	}
-
-	fmt.Printf(".L.return:\n")
-	fmt.Printf("  mov rsp, rbp\n")
-	fmt.Printf("  pop rbp\n")
-	fmt.Printf("  ret\n")
 }

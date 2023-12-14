@@ -62,6 +62,8 @@ type Obj struct {
 }
 
 type Function struct {
+	next      *Function
+	name      string
 	body      *Node
 	locals    *Obj
 	stackSize int
@@ -124,6 +126,17 @@ func getIdent(tok *Token) string {
 		errorTok(tok, "expected an identifier")
 	}
 	return currentInput[tok.loc : tok.loc+tok.len]
+}
+
+// type-suffix = ("(" func-params)?
+
+func typeSuffix(rest **Token, tok *Token) *Type {
+	if equal(tok, "(") == true {
+		*rest = skip(tok.next, ")")
+		return nil
+	}
+	*rest = tok
+	return nil
 }
 
 // declspec = "int"
@@ -502,14 +515,40 @@ func primary(rest **Token, tok *Token) *Node {
 	return nil
 }
 
-// program = stmt*
+// function = "func" ident type-suffix "{"
+
+func function(rest **Token, tok *Token) *Function {
+	if !equal(tok, "func") {
+		errorTok(tok, "unexpected declaration is found")
+	}
+	tok = tok.next
+	if tok.kind != TK_IDENT {
+		errorTok(tok, "expected a variable name")
+	}
+
+	typeSuffix(rest, tok.next)
+	returnTy := declarator(rest, *rest)
+	ty := funcType(returnTy)
+	ty.name = tok
+
+	locals = nil
+	fn := new(Function)
+	fn.name = getIdent(ty.name)
+	tok = skip(*rest, "{")
+	fn.body = componentStmt(rest, tok)
+	fn.locals = locals
+	return fn
+}
+
+// program = function*
 
 func parse(tok *Token) *Function {
-	tok = skip(tok, "{")
+	head := new(Function)
+	cur := head
+	for tok.kind != TK_EOF {
+		cur.next = function(&tok, tok)
+		cur = cur.next
+	}
 
-	prog := new(Function)
-	prog.body = componentStmt(&tok, tok)
-	prog.locals = locals
-
-	return prog
+	return head.next
 }
