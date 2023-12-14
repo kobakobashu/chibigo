@@ -218,6 +218,13 @@ func codegen(prog *Function) {
 		fmt.Printf("  mov rbp, rsp\n")
 		fmt.Printf("  sub rsp, %d\n", fn.stackSize)
 
+		// Save passed-by-register arguments to the stack
+		i := 0
+		for vr := fn.params; vr != nil; vr = vr.next {
+			fmt.Printf("  mov %d[rbp], %s\n", vr.offset, argreg[i])
+			i++
+		}
+
 		// Emit code
 		genStmt(fn.body)
 		if depth != 0 {

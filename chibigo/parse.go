@@ -64,6 +64,7 @@ type Obj struct {
 type Function struct {
 	next      *Function
 	name      string
+	params    *Obj
 	body      *Node
 	locals    *Obj
 	stackSize int
@@ -128,13 +129,31 @@ func getIdent(tok *Token) string {
 	return currentInput[tok.loc : tok.loc+tok.len]
 }
 
-// type-suffix = ("(" func-params)?
+// type-suffix = ("(" func-params? ")")?
+// func-params = param ("," param)*
+// param       = declspec declarator
 
 func typeSuffix(rest **Token, tok *Token) *Type {
 	if equal(tok, "(") == true {
-		*rest = skip(tok.next, ")")
-		return nil
+		tok = tok.next
+
+		head := new(Type)
+		cur := head
+
+		for !equal(tok, ")") {
+			if cur != head {
+				tok = skip(tok, ",")
+			}
+			vr := newNode(ND_VAR, tok)
+			ty := declarator(&tok, tok.next)
+			ty.name = vr.tok
+			cur.next = copyType(ty)
+			cur = cur.next
+		}
+		*rest = tok.next
+		return head.next
 	}
+
 	*rest = tok
 	return nil
 }
@@ -515,6 +534,13 @@ func primary(rest **Token, tok *Token) *Node {
 	return nil
 }
 
+func createParamLvars(param *Type) {
+	if param != nil {
+		createParamLvars(param.next)
+		newLvar(getIdent(param.name), param)
+	}
+}
+
 // function = "func" ident type-suffix "{"
 
 func function(rest **Token, tok *Token) *Function {
@@ -526,14 +552,19 @@ func function(rest **Token, tok *Token) *Function {
 		errorTok(tok, "expected a variable name")
 	}
 
-	typeSuffix(rest, tok.next)
+	params := typeSuffix(rest, tok.next)
 	returnTy := declarator(rest, *rest)
 	ty := funcType(returnTy)
+	ty.params = params
 	ty.name = tok
 
 	locals = nil
 	fn := new(Function)
 	fn.name = getIdent(ty.name)
+
+	createParamLvars(ty.params)
+	fn.params = locals
+
 	tok = skip(*rest, "{")
 	fn.body = componentStmt(rest, tok)
 	fn.locals = locals

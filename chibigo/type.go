@@ -17,12 +17,20 @@ type Type struct {
 	base     *Type  // Pointer
 	name     *Token // Declaration
 	returnTy *Type
+	params   *Type
+	next     *Type
 }
 
 var tyInt = &Type{kind: TY_INT}
 
 func isInteger(ty *Type) bool {
 	return ty.kind == TY_INT
+}
+
+func copyType(ty *Type) *Type {
+	ret := new(Type)
+	*ret = *ty
+	return ret
 }
 
 func pointerTo(base *Type) *Type {
@@ -53,6 +61,9 @@ func addType(node *Node) {
 	addType(node.inc)
 
 	for n := node.body; n != nil; n = n.next {
+		addType(n)
+	}
+	for n := node.args; n != nil; n = n.next {
 		addType(n)
 	}
 
