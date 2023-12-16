@@ -182,7 +182,7 @@ func declarator(rest **Token, tok *Token) *Type {
 	return ty
 }
 
-// declaration = "var" (declarator(",")?)* ("=" (expr(",")?)*)? ";"
+// declaration = "var" ident (("," ident)?)* declarator ("=" expr ("," expr)?)*)? ";"
 
 func declaration(rest **Token, tok *Token) *Node {
 	tok = skip(tok, "var")
@@ -194,7 +194,10 @@ func declaration(rest **Token, tok *Token) *Node {
 		vrs_cur.next = vrs
 		vrs_cur = vrs_cur.next
 		tok = tok.next
-		consume(&tok, tok, ",")
+		if equal(tok, "int") || equal(tok, "*") {
+			break
+		}
+		tok = skip(tok, ",")
 	}
 
 	ty := declarator(&tok, tok)
