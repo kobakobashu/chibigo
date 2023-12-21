@@ -129,29 +129,34 @@ func getIdent(tok *Token) string {
 	return currentInput[tok.loc : tok.loc+tok.len]
 }
 
-// type-suffix = ("(" func-params? ")")?
-// func-params = param ("," param)*
+// func-params = (param ("," param)*)? ")"
 // param       = declspec declarator
+
+func funcParams(rest **Token, tok *Token) *Type {
+	tok = tok.next
+
+	head := new(Type)
+	cur := head
+
+	for !equal(tok, ")") {
+		if cur != head {
+			tok = skip(tok, ",")
+		}
+		vr := newNode(ND_VAR, tok)
+		ty := declarator(&tok, tok.next)
+		ty.name = vr.tok
+		cur.next = copyType(ty)
+		cur = cur.next
+	}
+	*rest = tok.next
+	return head.next
+}
+
+// type-suffix = ("(" func-params
 
 func typeSuffix(rest **Token, tok *Token) *Type {
 	if equal(tok, "(") == true {
-		tok = tok.next
-
-		head := new(Type)
-		cur := head
-
-		for !equal(tok, ")") {
-			if cur != head {
-				tok = skip(tok, ",")
-			}
-			vr := newNode(ND_VAR, tok)
-			ty := declarator(&tok, tok.next)
-			ty.name = vr.tok
-			cur.next = copyType(ty)
-			cur = cur.next
-		}
-		*rest = tok.next
-		return head.next
+		return funcParams(rest, tok)
 	}
 
 	*rest = tok
