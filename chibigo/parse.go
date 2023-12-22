@@ -9,6 +9,7 @@ import "fmt"
 // All local variable instances created during parsing are
 // accumulated to this list.
 var locals *Obj
+var globals *Obj
 
 type NodeKind int
 
@@ -57,19 +58,16 @@ type Node struct {
 }
 
 type Obj struct {
-	next   *Obj
-	name   string
-	ty     *Type
-	offset int
-}
-
-type Function struct {
-	next      *Function
-	name      string
-	params    *Obj
-	body      *Node
-	locals    *Obj
-	stackSize int
+	next       *Obj
+	name       string // Variable name
+	ty         *Type  // Type
+	isLocal    bool   // local or global/function
+	offset     int    // Local variable
+	isFunction bool   // Global variable or function
+	params     *Obj
+	body       *Node
+	locals     *Obj
+	stackSize  int
 }
 
 // Find a local variable by name.
@@ -115,12 +113,25 @@ func newVarNode(vr *Obj, tok *Token) *Node {
 	return node
 }
 
-func newLvar(name string, ty *Type) *Obj {
+func newVar(name string, ty *Type) *Obj {
 	vr := new(Obj)
 	vr.name = string(name)
 	vr.ty = ty
+	return vr
+}
+
+func newLvar(name string, ty *Type) *Obj {
+	vr := newVar(name, ty)
+	vr.isLocal = true
 	vr.next = locals
 	locals = vr
+	return vr
+}
+
+func newGvar(name string, ty *Type) *Obj {
+	vr := newVar(name, ty)
+	vr.next = globals
+	globals = vr
 	return vr
 }
 
@@ -590,7 +601,7 @@ func createParamLvars(param *Type) {
 
 // function = "func" ident type-suffix "{"
 
-func function(rest **Token, tok *Token) *Function {
+func function(rest **Token, tok *Token) *Token {
 	if !equal(tok, "func") {
 		errorTok(tok, "unexpected declaration is found")
 	}
@@ -604,29 +615,27 @@ func function(rest **Token, tok *Token) *Function {
 	ty := funcType(returnTy)
 	ty.params = params
 	ty.name = tok
-
 	locals = nil
-	fn := new(Function)
-	fn.name = getIdent(ty.name)
+	fn := newGvar(getIdent(ty.name), ty)
+	fn.isFunction = true
 
 	createParamLvars(ty.params)
 	fn.params = locals
 
 	tok = skip(*rest, "{")
-	fn.body = componentStmt(rest, tok)
+	fn.body = componentStmt(&tok, tok)
 	fn.locals = locals
-	return fn
+	return tok
 }
 
-// program = function*
+// program = (function-definition | global-variable)*
 
-func parse(tok *Token) *Function {
-	head := new(Function)
-	cur := head
+func parse(tok *Token) *Obj {
+	globals = nil
+
 	for tok.kind != TK_EOF {
-		cur.next = function(&tok, tok)
-		cur = cur.next
+		tok = function(&tok, tok)
 	}
 
-	return head.next
+	return globals
 }

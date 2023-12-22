@@ -10,7 +10,7 @@ import (
 
 var depth int
 var argreg = []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
-var current_fn *Function
+var current_fn *Obj
 
 var counter = count()
 
@@ -208,8 +208,11 @@ func genStmt(node *Node) {
 
 // Assign offsets to local variables.
 
-func assignLvarOffsets(prog *Function) {
+func assignLvarOffsets(prog *Obj) {
 	for fn := prog; fn != nil; fn = fn.next {
+		if fn.isFunction == false {
+			continue
+		}
 		offset := 0
 		for vr := fn.locals; vr != nil; vr = vr.next {
 			offset += vr.ty.size
@@ -219,12 +222,17 @@ func assignLvarOffsets(prog *Function) {
 	}
 }
 
-func codegen(prog *Function) {
+func codegen(prog *Obj) {
 	assignLvarOffsets(prog)
 
 	fmt.Printf(".intel_syntax noprefix\n")
 	for fn := prog; fn != nil; fn = fn.next {
+		if fn.isFunction == false {
+			continue
+		}
+
 		fmt.Printf(".globl %s\n", fn.name)
+		fmt.Printf(".text\n")
 		fmt.Printf("%s:\n", fn.name)
 		current_fn = fn
 
