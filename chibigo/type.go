@@ -10,18 +10,21 @@ const (
 	TY_INT TypeKind = iota
 	TY_PTR
 	TY_FUNC
+	TY_ARRAY
 )
 
 type Type struct {
 	kind     TypeKind
+	size     int
 	base     *Type  // Pointer
 	name     *Token // Declaration
+	arrayLen int
 	returnTy *Type
 	params   *Type
 	next     *Type
 }
 
-var tyInt = &Type{kind: TY_INT}
+var tyInt = &Type{kind: TY_INT, size: 8}
 
 func isInteger(ty *Type) bool {
 	return ty.kind == TY_INT
@@ -36,6 +39,7 @@ func copyType(ty *Type) *Type {
 func pointerTo(base *Type) *Type {
 	ty := new(Type)
 	ty.kind = TY_PTR
+	ty.size = 8
 	ty.base = base
 	return ty
 }
@@ -44,6 +48,15 @@ func funcType(returnTy *Type) *Type {
 	ty := new(Type)
 	ty.kind = TY_FUNC
 	ty.returnTy = returnTy
+	return ty
+}
+
+func arrayOf(base *Type, len int) *Type {
+	ty := new(Type)
+	ty.kind = TY_ARRAY
+	ty.size = base.size * len
+	ty.base = base
+	ty.arrayLen = len
 	return ty
 }
 
@@ -68,7 +81,13 @@ func addType(node *Node) {
 	}
 
 	switch node.kind {
-	case ND_ADD, ND_SUB, ND_MUL, ND_DIV, ND_NEG, ND_ASSIGN:
+	case ND_ADD, ND_SUB, ND_MUL, ND_DIV, ND_NEG:
+		node.ty = node.lhs.ty
+		return
+	case ND_ASSIGN:
+		if node.lhs.ty.kind == TY_ARRAY {
+			errorTok(node.lhs.tok, "not an lvalue")
+		}
 		node.ty = node.lhs.ty
 		return
 	case ND_EQ, ND_NE, ND_LT, ND_LE, ND_NUM, ND_FUNCALL:
@@ -78,10 +97,14 @@ func addType(node *Node) {
 		node.ty = node.vr.ty
 		return
 	case ND_ADDR:
-		node.ty = pointerTo(node.lhs.ty)
+		if node.lhs.ty.kind == TY_ARRAY {
+			node.ty = pointerTo(node.lhs.ty.base)
+		} else {
+			node.ty = pointerTo(node.lhs.ty)
+		}
 		return
 	case ND_DEREF:
-		if node.lhs.ty.kind != TY_PTR {
+		if node.lhs.ty.base == nil {
 			errorTok(node.tok, "invalid pointer dereference")
 		}
 		node.ty = node.lhs.ty.base

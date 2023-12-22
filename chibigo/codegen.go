@@ -61,6 +61,22 @@ func genAddr(node *Node) {
 	errorTok(node.tok, "not an lvalue")
 }
 
+// Load a value from where %rax is pointing to.
+
+func load(ty *Type) {
+	if ty != nil && ty.kind == TY_ARRAY {
+		return
+	}
+	fmt.Printf("  mov rax, [rax]\n")
+}
+
+// Store %rax to an address that the stack top is pointing to.
+
+func store() {
+	pop("rdi")
+	fmt.Printf("  mov [rdi], rax\n")
+}
+
 func genExpr(node *Node) {
 	switch node.kind {
 	case ND_NUM:
@@ -72,11 +88,11 @@ func genExpr(node *Node) {
 		return
 	case ND_VAR:
 		genAddr(node)
-		fmt.Printf("  mov rax, [rax]\n")
+		load(node.ty)
 		return
 	case ND_DEREF:
 		genExpr(node.lhs)
-		fmt.Printf("  mov rax, [rax]\n")
+		load(node.ty)
 		return
 	case ND_ADDR:
 		genAddr(node.lhs)
@@ -85,8 +101,7 @@ func genExpr(node *Node) {
 		genAddr(node.lhs)
 		push()
 		genExpr(node.rhs)
-		pop("rdi")
-		fmt.Printf("  mov [rdi], rax\n")
+		store()
 		return
 	case ND_FUNCALL:
 		nargs := 0
@@ -197,7 +212,7 @@ func assignLvarOffsets(prog *Function) {
 	for fn := prog; fn != nil; fn = fn.next {
 		offset := 0
 		for vr := fn.locals; vr != nil; vr = vr.next {
-			offset += 8
+			offset += vr.ty.size
 			vr.offset = -offset
 		}
 		fn.stackSize = alignTo(offset, 16)

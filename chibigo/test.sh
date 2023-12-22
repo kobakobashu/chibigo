@@ -105,4 +105,9 @@ assert 7 'func main() int { return add2(3,4); } func add2(x int, y int) int { re
 assert 1 'func main() int { return sub2(4,3); } func sub2(x int, y int) int { return x-y; }'
 assert 55 'func main() int { return fib(9); } func fib(x int) int { if (x<=1) return 1; return fib(x-1) + fib(x-2); }'
 
+assert 1 'func main() int { var x [2]int; x[0] = 1; return x[0]; }'
+assert 2 'func main() int { var x [2]int; x[1] = 2; return x[1]; }'
+assert 1 'func main() int { var x [2]*int; var y int = 1; x[0] = &y; return *x[0]; }'
+assert 2 'func main() int { var x [2]*int; var y int = 2; x[1] = &y; return *x[1]; }'
+
 echo OK

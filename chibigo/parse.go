@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 //
 // Parser
 //
@@ -170,9 +172,22 @@ func declspec(rest **Token, tok *Token) *Type {
 	return tyInt
 }
 
-// declarator = "*"* declspec
+// declarator = "[" num "]" declarator
+//            | "*"* declspec
 
 func declarator(rest **Token, tok *Token) *Type {
+	if equal(tok, "[") {
+		sz, err := getNumber(tok.next)
+		if err != nil {
+			fmt.Printf("Error: ", err)
+			return nil
+		}
+		tok = skip(tok.next.next, "]")
+		base := declarator(&tok, tok)
+		*rest = tok
+		return arrayOf(base, sz)
+	}
+
 	tmp := tok
 	for equal(tmp, "*") {
 		tmp = tmp.next
@@ -199,7 +214,7 @@ func declaration(rest **Token, tok *Token) *Node {
 		vrs_cur.next = vrs
 		vrs_cur = vrs_cur.next
 		tok = tok.next
-		if equal(tok, "int") || equal(tok, "*") {
+		if equal(tok, "int") || equal(tok, "*") || equal(tok, "[") {
 			break
 		}
 		tok = skip(tok, ",")
@@ -394,12 +409,20 @@ func newAdd(lhs *Node, rhs *Node, tok *Token) *Node {
 		return newBinary(ND_ADD, lhs, rhs, tok)
 	}
 
-	if lhs.ty.base != nil || rhs.ty.base != nil {
-		errorTok(tok, "invalid operands: pointer arithmetic is not supported in Go")
+	if lhs.ty.base != nil && rhs.ty.base != nil {
+		errorTok(tok, "invalid operands")
 	}
 
-	errorTok(tok, "invalid operands")
-	return nil
+	// Canonicalize `num + ptr` to `ptr + num`.
+	if lhs.ty.base == nil && rhs.ty.base != nil {
+		tmp := lhs
+		lhs = rhs
+		rhs = tmp
+	}
+
+	// ptr + num
+	rhs = newBinary(ND_MUL, rhs, newNum(8, tok), tok)
+	return newBinary(ND_ADD, lhs, rhs, tok)
 }
 
 func newSub(lhs *Node, rhs *Node, tok *Token) *Node {
@@ -464,7 +487,7 @@ func mul(rest **Token, tok *Token) *Node {
 }
 
 // unary = ("+" | "-" | "*" | "&") unary
-//       | primary
+//       | postfix
 
 func unary(rest **Token, tok *Token) *Node {
 	if equal(tok, "+") {
@@ -480,7 +503,23 @@ func unary(rest **Token, tok *Token) *Node {
 		return newUnary(ND_DEREF, unary(rest, tok.next), tok)
 	}
 
-	return primary(rest, tok)
+	return postfix(rest, tok)
+}
+
+// postfix = primary ("[" expr "]")*
+
+func postfix(rest **Token, tok *Token) *Node {
+	node := primary(&tok, tok)
+
+	for equal(tok, "[") {
+		// x[y] is short for *(x+y)
+		start := tok
+		idx := expr(&tok, tok.next)
+		tok = skip(tok, "]")
+		node = newUnary(ND_DEREF, newAdd(node, idx, start), start)
+	}
+	*rest = tok
+	return node
 }
 
 // funcall = ident "(" (assign ("," assign)*)? ")"
