@@ -223,26 +223,12 @@ func declarator(rest **Token, tok *Token) *Type {
 // declaration = "var" ident (("," ident)?)* declarator ("=" expr ("," expr)?)*)? ";"
 
 func declaration(rest **Token, tok *Token) *Node {
-	tok = skip(tok, "var")
-	vrs_head := new(Node)
-	vrs_cur := vrs_head
-
-	for tok.kind == TK_IDENT {
-		vrs := newNode(ND_VAR, tok)
-		vrs_cur.next = vrs
-		vrs_cur = vrs_cur.next
-		tok = tok.next
-		if equal(tok, "int") || equal(tok, "*") || equal(tok, "[") {
-			break
-		}
-		tok = skip(tok, ",")
-	}
-
+	vrs_head := storeIdentTemp(&tok, tok)
 	ty := declarator(&tok, tok)
 	head := new(Node)
 	cur := head
 	if consume(&tok, tok, "=") {
-		for vr_cur := vrs_head.next; vr_cur != nil; vr_cur = vr_cur.next {
+		for vr_cur := vrs_head; vr_cur != nil; vr_cur = vr_cur.next {
 			vr := newLvar(getIdent(vr_cur.tok), ty)
 
 			lhs := newVarNode(vr, ty.name)
@@ -253,7 +239,7 @@ func declaration(rest **Token, tok *Token) *Node {
 			consume(&tok, tok, ",")
 		}
 	} else {
-		for vr_cur := vrs_head.next; vr_cur != nil; vr_cur = vr_cur.next {
+		for vr_cur := vrs_head; vr_cur != nil; vr_cur = vr_cur.next {
 			newLvar(getIdent(vr_cur.tok), ty)
 		}
 	}
@@ -635,7 +621,7 @@ func function(rest **Token, tok *Token) *Token {
 	return tok
 }
 
-func globalVariable(tok *Token) *Token {
+func storeIdentTemp(rest **Token, tok *Token) *Node {
 	tok = skip(tok, "var")
 	vrs_head := new(Node)
 	vrs_cur := vrs_head
@@ -649,9 +635,14 @@ func globalVariable(tok *Token) *Token {
 		}
 		tok = skip(tok, ",")
 	}
+	*rest = tok
+	return vrs_head.next
+}
 
+func globalVariable(tok *Token) *Token {
+	vrs_head := storeIdentTemp(&tok, tok)
 	ty := declarator(&tok, tok)
-	for vr_cur := vrs_head.next; vr_cur != nil; vr_cur = vr_cur.next {
+	for vr_cur := vrs_head; vr_cur != nil; vr_cur = vr_cur.next {
 		newGvar(getIdent(vr_cur.tok), ty)
 	}
 	tok = skip(tok, ";")
