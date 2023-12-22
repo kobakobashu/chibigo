@@ -110,4 +110,7 @@ assert 2 'func main() int { var x [2]int; x[1] = 2; return x[1]; }'
 assert 1 'func main() int { var x [2]*int; var y int = 1; x[0] = &y; return *x[0]; }'
 assert 2 'func main() int { var x [2]*int; var y int = 2; x[1] = &y; return *x[1]; }'
 
+assert 2 'func main() int { var x [2][3]int; x[0][0] = 2; return x[0][0]; }'
+assert 3 'func main() int { var x [2][3]int; x[1][1] = 3; return x[1][1]; }'
+
 echo OK
