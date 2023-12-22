@@ -51,7 +51,13 @@ func alignTo(n int, align int) int {
 func genAddr(node *Node) {
 	switch node.kind {
 	case ND_VAR:
-		fmt.Printf("  lea rax, %d[rbp]\n", node.vr.offset)
+		if node.vr.isLocal == true {
+			// Local variable
+			fmt.Printf("  lea rax, %d[rbp]\n", node.vr.offset)
+		} else {
+			// Global variable
+			fmt.Printf("  lea rax, [rip + %s]\n", node.vr.name)
+		}
 		return
 	case ND_DEREF:
 		genExpr(node.lhs)
@@ -222,7 +228,20 @@ func assignLvarOffsets(prog *Obj) {
 	}
 }
 
-func codegen(prog *Obj) {
+func emitData(prog *Obj) {
+	for vr := prog; vr != nil; vr = vr.next {
+		if vr.isFunction {
+			continue
+		}
+
+		fmt.Printf("  .data\n")
+		fmt.Printf("  .globl %s\n", vr.name)
+		fmt.Printf("%s:\n", vr.name)
+		fmt.Printf("  .zero %d\n", vr.ty.size)
+	}
+}
+
+func emitText(prog *Obj) {
 	assignLvarOffsets(prog)
 
 	fmt.Printf(".intel_syntax noprefix\n")
@@ -260,4 +279,10 @@ func codegen(prog *Obj) {
 		fmt.Printf("  pop rbp\n")
 		fmt.Printf("  ret\n")
 	}
+}
+
+func codegen(prog *Obj) {
+	assignLvarOffsets(prog)
+	emitData(prog)
+	emitText(prog)
 }

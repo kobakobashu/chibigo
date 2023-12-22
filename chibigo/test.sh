@@ -113,4 +113,13 @@ assert 2 'func main() int { var x [2]*int; var y int = 2; x[1] = &y; return *x[1
 assert 2 'func main() int { var x [2][3]int; x[0][0] = 2; return x[0][0]; }'
 assert 3 'func main() int { var x [2][3]int; x[1][1] = 3; return x[1][1]; }'
 
+assert 0 'var x int; func main() int { return x; }'
+assert 3 'var x int; func main() int { x=3; return x; }'
+assert 7 'var x int; var y int; func main() int { x=3; y=4; return x+y; }'
+assert 7 'var x, y int; func main() int { x=3; y=4; return x+y; }'
+assert 0 'var x [4]int; func main() int { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[0]; }'
+assert 1 'var x [4]int; func main() int { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[1]; }'
+assert 2 'var x [4]int; func main() int { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[2]; }'
+assert 3 'var x [4]int; func main() int { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[3]; }'
+
 echo OK

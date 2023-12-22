@@ -78,6 +78,13 @@ func findVar(tok *Token) *Obj {
 			return vr
 		}
 	}
+
+	for vr := globals; vr != nil; vr = vr.next {
+		if len(vr.name) == tok.len && vr.name == string(currentInput[tok.loc:tok.loc+tok.len]) {
+			return vr
+		}
+	}
+
 	return nil
 }
 
@@ -628,13 +635,43 @@ func function(rest **Token, tok *Token) *Token {
 	return tok
 }
 
+func globalVariable(tok *Token) *Token {
+	tok = skip(tok, "var")
+	vrs_head := new(Node)
+	vrs_cur := vrs_head
+	for tok.kind == TK_IDENT {
+		vrs := newNode(ND_VAR, tok)
+		vrs_cur.next = vrs
+		vrs_cur = vrs_cur.next
+		tok = tok.next
+		if equal(tok, "int") || equal(tok, "*") || equal(tok, "[") {
+			break
+		}
+		tok = skip(tok, ",")
+	}
+
+	ty := declarator(&tok, tok)
+	for vr_cur := vrs_head.next; vr_cur != nil; vr_cur = vr_cur.next {
+		newGvar(getIdent(vr_cur.tok), ty)
+	}
+	tok = skip(tok, ";")
+	return tok
+}
+
 // program = (function-definition | global-variable)*
 
 func parse(tok *Token) *Obj {
 	globals = nil
 
 	for tok.kind != TK_EOF {
-		tok = function(&tok, tok)
+		// Function
+		if equal(tok, "func") {
+			tok = function(&tok, tok)
+			continue
+		}
+
+		// Global variable
+		tok = globalVariable(tok)
 	}
 
 	return globals
