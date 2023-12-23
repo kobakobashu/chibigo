@@ -13,7 +13,7 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./chibigo "$input" > tmp.s
+  echo "$input" | ./chibigo - > tmp.s || exit
   cc -o tmp tmp.s tmp2.o
   ./tmp
   actual="$?"

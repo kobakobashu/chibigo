@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -34,6 +35,10 @@ type Token struct {
 	str  string    // String literal contents including terminating '\0'
 }
 
+// Input filename
+var currentFilename string
+
+// Input string
 var currentInput string
 
 // Reports an error and exit.
@@ -42,9 +47,37 @@ func errorf(format string, a ...interface{}) {
 	os.Exit(1)
 }
 
+// Reports an error message in the following format and exit.
+//
+// foo.go:10: x = y + 1;
+//               ^ <error message here>
 func verrorAt(loc int, format string, a ...interface{}) {
-	fmt.Fprintln(os.Stderr, string(currentInput))
-	fmt.Fprintf(os.Stderr, "%*s^ ", loc, "")
+	line := loc
+	for line > 0 && currentInput[line-1] != '\n' {
+		line--
+	}
+
+	end := loc
+	for end < len(currentInput) && currentInput[end] != '\n' {
+		end++
+	}
+
+	// Get a line number.
+	lineNo := 1
+	for i := 0; i < line; i++ {
+		if currentInput[i] == '\n' {
+			lineNo++
+		}
+	}
+
+	// Print out the line.
+	lineContent := currentInput[line:end]
+	content := fmt.Sprintf("%s:%d: %s\n", currentFilename, lineNo, lineContent)
+
+	// Show the error message.
+	pos := len(content) - (end - loc + 1)
+	fmt.Fprintf(os.Stderr, content)
+	fmt.Fprintf(os.Stderr, "%*s^ ", pos, "")
 	fmt.Fprintf(os.Stderr, format+"\n", a...)
 	os.Exit(1)
 }
@@ -170,8 +203,23 @@ func convertKeywords(tok *Token) {
 	}
 }
 
+func extractNum(idx int) (int, int, error) {
+	numericPart := 0
+	for cur := idx; cur < len(currentInput); cur++ {
+		nextChar := string(currentInput[cur])
+		num, err := strconv.Atoi(nextChar)
+		if err != nil {
+			return numericPart, cur, nil
+		}
+		numericPart = numericPart*10 + num
+	}
+	return numericPart, len(currentInput), nil
+}
+
 // Tokenize `currentInput` and returns new tokens.
-func tokenize(input string) (*Token, error) {
+
+func tokenize(filename string, input string) (*Token, error) {
+	currentFilename = filename
 	currentInput = input
 	head := Token{}
 	cur := &head
@@ -228,15 +276,36 @@ func tokenize(input string) (*Token, error) {
 	return head.next, nil
 }
 
-func extractNum(idx int) (int, int, error) {
-	numericPart := 0
-	for cur := idx; cur < len(currentInput); cur++ {
-		nextChar := string(currentInput[cur])
-		num, err := strconv.Atoi(nextChar)
+func readFile(path string) (string, error) {
+	var buf []byte
+	var err error
+
+	if path == "-" {
+		// Read from stdin if the given filename is "-".
+		buf, err = ioutil.ReadAll(os.Stdin)
+	} else {
+		buf, err = ioutil.ReadFile(path)
 		if err != nil {
-			return numericPart, cur, nil
+			return "", fmt.Errorf("cannot open %s: %s", path, err)
 		}
-		numericPart = numericPart*10 + num
 	}
-	return numericPart, len(currentInput), nil
+
+	// Ensure the last line is properly terminated with '\n'.
+	if len(buf) == 0 || buf[len(buf)-1] != '\n' {
+		buf = append(buf, '\n')
+	}
+
+	return string(buf), nil
+}
+
+func tokenizeFile(path string) (*Token, error) {
+	file, err := readFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if token, err := tokenize(path, file); err != nil {
+		return nil, err
+	} else {
+		return token, nil
+	}
 }

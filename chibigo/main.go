@@ -11,7 +11,7 @@ func main() {
 		return
 	}
 
-	tok, err := tokenize(os.Args[1])
+	tok, err := tokenizeFile(os.Args[1])
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
