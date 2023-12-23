@@ -135,4 +135,8 @@ assert 98 'func main() int { return "abc"[1]; }'
 assert 99 'func main() int { return "abc"[2]; }'
 assert 0 'func main() int { return "abc"[3]; }'
 
+assert 2 'func main() int { /* return 1; */ return 2; }'
+assert 2 'func main() int { // return 1;
+return 2; }'
+
 echo OK

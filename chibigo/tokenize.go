@@ -227,6 +227,28 @@ func tokenize(filename string, input string) (*Token, error) {
 	var err error
 	idx := 0
 	for idx < len(currentInput) {
+		// Skip line comments.
+		if idx+1 < len(currentInput) && string(currentInput[idx:idx+2]) == "//" {
+			idx += 2
+			for currentInput[idx] != '\n' {
+				idx++
+			}
+			continue
+		}
+
+		// Skip block comments.
+		if idx+1 < len(currentInput) && string(currentInput[idx:idx+2]) == "/*" {
+			idx += 2
+			for idx+1 < len(currentInput) && string(currentInput[idx:idx+2]) != "*/" {
+				idx++
+			}
+			if idx+1 == len(currentInput) {
+				errorAt(idx, "unclosed block comment")
+			}
+			idx += 2
+			continue
+		}
+
 		if unicode.IsSpace(rune(currentInput[idx])) {
 			idx += 1
 			continue
