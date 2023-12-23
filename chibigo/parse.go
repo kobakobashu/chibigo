@@ -11,6 +11,8 @@ import "fmt"
 var locals *Obj
 var globals *Obj
 
+var scope *Scope = new(Scope)
+
 type NodeKind int
 
 const (
@@ -71,18 +73,39 @@ type Obj struct {
 	initData   string // Global variable
 }
 
+// Scope for local or global variables.
+
+type VarScope struct {
+	next  *VarScope
+	name  string
+	vrObj *Obj
+}
+
+// Represents a block scope.
+
+type Scope struct {
+	next *Scope
+	vrs  *VarScope
+}
+
+func enterScope() {
+	sc := new(Scope)
+	sc.next = scope
+	scope = sc
+}
+
+func leaveScope() {
+	scope = scope.next
+}
+
 // Find a local variable by name.
 
 func findVar(tok *Token) *Obj {
-	for vr := locals; vr != nil; vr = vr.next {
-		if len(vr.name) == tok.len && vr.name == string(currentInput[tok.loc:tok.loc+tok.len]) {
-			return vr
-		}
-	}
-
-	for vr := globals; vr != nil; vr = vr.next {
-		if len(vr.name) == tok.len && vr.name == string(currentInput[tok.loc:tok.loc+tok.len]) {
-			return vr
+	for sc := scope; sc != nil; sc = sc.next {
+		for sc2 := sc.vrs; sc2 != nil; sc2 = sc2.next {
+			if equal(tok, sc2.name) {
+				return sc2.vrObj
+			}
 		}
 	}
 
@@ -121,10 +144,20 @@ func newVarNode(vr *Obj, tok *Token) *Node {
 	return node
 }
 
+func pushScope(name string, vr *Obj) *VarScope {
+	sc := new(VarScope)
+	sc.name = name
+	sc.vrObj = vr
+	sc.next = scope.vrs
+	scope.vrs = sc
+	return sc
+}
+
 func newVar(name string, ty *Type) *Obj {
 	vr := new(Obj)
 	vr.name = string(name)
 	vr.ty = ty
+	pushScope(name, vr)
 	return vr
 }
 
@@ -342,6 +375,7 @@ func componentStmt(rest **Token, tok *Token) *Node {
 
 	head := new(Node)
 	cur := head
+	enterScope()
 	for !equal(tok, "}") {
 		if equal(tok, "var") {
 			cur.next = declaration(&tok, tok)
@@ -351,7 +385,7 @@ func componentStmt(rest **Token, tok *Token) *Node {
 			cur = cur.next
 		}
 	}
-
+	leaveScope()
 	node.body = head.next
 	*rest = tok.next
 	return node
@@ -651,13 +685,14 @@ func function(rest **Token, tok *Token) *Token {
 	locals = nil
 	fn := newGvar(getIdent(ty.name), ty)
 	fn.isFunction = true
-
+	enterScope()
 	createParamLvars(ty.params)
 	fn.params = locals
 
 	tok = skip(*rest, "{")
 	fn.body = componentStmt(&tok, tok)
 	fn.locals = locals
+	leaveScope()
 	return tok
 }
 
