@@ -9,7 +9,9 @@ import (
 //
 
 var depth int
-var argreg = []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+
+var argreg8 = [...]string{"dil", "sil", "dl", "cl", "r8b", "r9b"}
+var argreg64 = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 var current_fn *Obj
 
 var counter = count()
@@ -73,14 +75,22 @@ func load(ty *Type) {
 	if ty != nil && ty.kind == TY_ARRAY {
 		return
 	}
-	fmt.Printf("  mov rax, [rax]\n")
+	if ty != nil && ty.size == 1 {
+		fmt.Printf("  movsx rax, byte ptr [rax]\n")
+	} else {
+		fmt.Printf("  mov rax, [rax]\n")
+	}
 }
 
 // Store %rax to an address that the stack top is pointing to.
 
-func store() {
+func store(ty *Type) {
 	pop("rdi")
-	fmt.Printf("  mov [rdi], rax\n")
+	if ty != nil && ty.size == 1 {
+		fmt.Printf("  mov [rdi], al\n")
+	} else {
+		fmt.Printf("  mov [rdi], rax\n")
+	}
 }
 
 func genExpr(node *Node) {
@@ -107,7 +117,7 @@ func genExpr(node *Node) {
 		genAddr(node.lhs)
 		push()
 		genExpr(node.rhs)
-		store()
+		store(node.ty)
 		return
 	case ND_FUNCALL:
 		nargs := 0
@@ -117,7 +127,7 @@ func genExpr(node *Node) {
 			nargs++
 		}
 		for i := nargs - 1; i >= 0; i-- {
-			pop(argreg[i])
+			pop(argreg64[i])
 		}
 		fmt.Printf("  mov rax, 0\n")
 		fmt.Printf("  call %s\n", node.funcname)
@@ -263,7 +273,11 @@ func emitText(prog *Obj) {
 		// Save passed-by-register arguments to the stack
 		i := 0
 		for vr := fn.params; vr != nil; vr = vr.next {
-			fmt.Printf("  mov %d[rbp], %s\n", vr.offset, argreg[i])
+			if vr != nil && vr.ty != nil && vr.ty.size == 1 {
+				fmt.Printf("  mov %d[rbp], %s\n", vr.offset, argreg8[i])
+			} else {
+				fmt.Printf("  mov %d[rbp], %s\n", vr.offset, argreg64[i])
+			}
 			i++
 		}
 

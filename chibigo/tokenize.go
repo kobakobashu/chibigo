@@ -136,7 +136,7 @@ func isIdent2(idx int) bool {
 }
 
 func isKeyword(tok *Token) bool {
-	kw := []string{"return", "if", "else", "for", "int", "var", "func"}
+	kw := []string{"return", "if", "else", "for", "int", "char", "var", "func"}
 	for _, keyword := range kw {
 		if equal(tok, keyword) {
 			return true

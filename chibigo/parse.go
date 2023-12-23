@@ -183,11 +183,21 @@ func typeSuffix(rest **Token, tok *Token) *Type {
 	return nil
 }
 
-// declspec = "int"
+// declspec = "int" || "char"
 
 func declspec(rest **Token, tok *Token) *Type {
-	*rest = skip(tok, "int")
-	return tyInt
+	if equal(tok, "char") {
+		*rest = tok.next
+		return tyChar
+	}
+
+	if equal(tok, "int") {
+		*rest = tok.next
+		return tyInt
+	}
+
+	errorTok(tok, "Found an unsupported specifier")
+	return nil
 }
 
 // declarator = "[" num "]" declarator
@@ -248,6 +258,12 @@ func declaration(rest **Token, tok *Token) *Node {
 	node.body = head.next
 	*rest = tok.next
 	return node
+}
+
+// Returns true if a given token represents a type.
+
+func isTypename(tok *Token) bool {
+	return equal(tok, "char") || equal(tok, "int")
 }
 
 // stmt = "return" expr ";"
@@ -630,7 +646,7 @@ func storeIdentTemp(rest **Token, tok *Token) *Node {
 		vrs_cur.next = vrs
 		vrs_cur = vrs_cur.next
 		tok = tok.next
-		if equal(tok, "int") || equal(tok, "*") || equal(tok, "[") {
+		if isTypename(tok) || equal(tok, "*") || equal(tok, "[") {
 			break
 		}
 		tok = skip(tok, ",")

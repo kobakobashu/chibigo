@@ -7,7 +7,8 @@ package main
 type TypeKind int
 
 const (
-	TY_INT TypeKind = iota
+	TY_CHAR TypeKind = iota
+	TY_INT
 	TY_PTR
 	TY_FUNC
 	TY_ARRAY
@@ -24,10 +25,11 @@ type Type struct {
 	next     *Type
 }
 
+var tyChar = &Type{kind: TY_CHAR, size: 1}
 var tyInt = &Type{kind: TY_INT, size: 8}
 
 func isInteger(ty *Type) bool {
-	return ty.kind == TY_INT
+	return ty.kind == TY_INT || ty.kind == TY_CHAR
 }
 
 func copyType(ty *Type) *Type {

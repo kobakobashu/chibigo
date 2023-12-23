@@ -122,4 +122,10 @@ assert 1 'var x [4]int; func main() int { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return
 assert 2 'var x [4]int; func main() int { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[2]; }'
 assert 3 'var x [4]int; func main() int { x[0]=0; x[1]=1; x[2]=2; x[3]=3; return x[3]; }'
 
+assert 1 'func main() char { var x char=1; return x; }'
+assert 1 'func main() char { var x char=1; var y char=2; return x; }'
+assert 2 'func main() char { var x char=1; var y char=2; return y; }'
+
+assert 1 'func main() char { return subChar(7, 3, 3); } func subChar(a char, b char, c char) int { return a-b-c; }'
+
 echo OK
