@@ -128,4 +128,11 @@ assert 2 'func main() char { var x char=1; var y char=2; return y; }'
 
 assert 1 'func main() char { return subChar(7, 3, 3); } func subChar(a char, b char, c char) int { return a-b-c; }'
 
+assert 0 'func main() int { return ""[0]; }'
+
+assert 97 'func main() int { return "abc"[0]; }'
+assert 98 'func main() int { return "abc"[1]; }'
+assert 99 'func main() int { return "abc"[2]; }'
+assert 0 'func main() int { return "abc"[3]; }'
+
 echo OK

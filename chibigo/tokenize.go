@@ -21,6 +21,7 @@ const (
 	TK_NUM                      // Numeric literals
 	TK_EOF                      // End-of-file markers
 	TK_KEYWORD                  // Keywords
+	TK_STR                      // String literals
 )
 
 type Token struct {
@@ -29,6 +30,8 @@ type Token struct {
 	val  int       // If kind is TK_NUM, its value
 	loc  int       // Token location
 	len  int       // Token length
+	ty   *Type     // Used if TK_STR
+	str  string    // String literal contents including terminating '\0'
 }
 
 var currentInput string
@@ -85,11 +88,11 @@ func consume(rest **Token, tok *Token, str string) bool {
 }
 
 // Create a new token.
-func newToken(kind TokenKind, start, punct_len int) *Token {
+func newToken(kind TokenKind, start, punctLen int) *Token {
 	tok := &Token{
 		kind: kind,
 		loc:  start,
-		len:  punct_len,
+		len:  punctLen,
 	}
 	return tok
 }
@@ -145,6 +148,20 @@ func isKeyword(tok *Token) bool {
 	return false
 }
 
+func readStringLiteral(idx int) *Token {
+	start := idx
+	cur := start
+	for ; string(currentInput[cur]) != "\""; cur++ {
+		if string(currentInput[cur]) == "\n" {
+			errorAt(start, "unclosed string literal")
+		}
+	}
+	tok := newToken(TK_STR, start, cur-start)
+	tok.ty = arrayOf(tyChar, cur-start)
+	tok.str = string(currentInput[tok.loc : tok.loc+tok.len])
+	return tok
+}
+
 func convertKeywords(tok *Token) {
 	for t := tok; t.kind != TK_EOF; t = t.next {
 		if isKeyword(t) {
@@ -176,6 +193,14 @@ func tokenize(input string) (*Token, error) {
 				return nil, err
 			}
 			cur.len = idx - tmp
+			continue
+		}
+		// String literal
+		if currentInput[idx] == '"' {
+			idx++
+			cur.next = readStringLiteral(idx)
+			cur = cur.next
+			idx += cur.len + 1
 			continue
 		}
 		// Identifier or keyword

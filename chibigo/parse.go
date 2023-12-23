@@ -68,6 +68,7 @@ type Obj struct {
 	body       *Node
 	locals     *Obj
 	stackSize  int
+	initData   string // Global variable
 }
 
 // Find a local variable by name.
@@ -139,6 +140,23 @@ func newGvar(name string, ty *Type) *Obj {
 	vr := newVar(name, ty)
 	vr.next = globals
 	globals = vr
+	return vr
+}
+
+var id int = 0
+
+func newUniqueName() string {
+	buf := fmt.Sprintf(".L..%d", id)
+	return buf
+}
+
+func newAnonGvar(ty *Type) *Obj {
+	return newGvar(newUniqueName(), ty)
+}
+
+func newStringLiteral(str string, ty *Type) *Obj {
+	vr := newAnonGvar(ty)
+	vr.initData = str
 	return vr
 }
 
@@ -441,7 +459,7 @@ func newAdd(lhs *Node, rhs *Node, tok *Token) *Node {
 	}
 
 	// ptr + num
-	rhs = newBinary(ND_MUL, rhs, newNum(8, tok), tok)
+	rhs = newBinary(ND_MUL, rhs, newNum(lhs.ty.base.size, tok), tok)
 	return newBinary(ND_ADD, lhs, rhs, tok)
 }
 
@@ -567,7 +585,7 @@ func funcall(rest **Token, tok *Token) *Node {
 	return node
 }
 
-// primary = "(" expr ")" | ident func-args? | num
+// primary = "(" expr ")" | ident func-args? | str | num
 
 func primary(rest **Token, tok *Token) *Node {
 	if equal(tok, "(") {
@@ -587,6 +605,12 @@ func primary(rest **Token, tok *Token) *Node {
 		if vr == nil {
 			errorTok(tok, "undefined variable")
 		}
+		*rest = tok.next
+		return newVarNode(vr, tok)
+	}
+
+	if tok.kind == TK_STR {
+		vr := newStringLiteral(tok.str, tok.ty)
 		*rest = tok.next
 		return newVarNode(vr, tok)
 	}

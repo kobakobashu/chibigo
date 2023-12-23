@@ -247,7 +247,13 @@ func emitData(prog *Obj) {
 		fmt.Printf("  .data\n")
 		fmt.Printf("  .globl %s\n", vr.name)
 		fmt.Printf("%s:\n", vr.name)
-		fmt.Printf("  .zero %d\n", vr.ty.size)
+		if vr.initData != "" {
+			for i := 0; i < vr.ty.size; i++ {
+				fmt.Printf("  .byte %d\n", vr.initData[i])
+			}
+		} else {
+			fmt.Printf("  .zero %d\n", vr.ty.size)
+		}
 	}
 }
 
