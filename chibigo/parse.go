@@ -181,6 +181,7 @@ var id int = 0
 
 func newUniqueName() string {
 	buf := fmt.Sprintf(".L..%d", id)
+	id++
 	return buf
 }
 

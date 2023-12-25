@@ -252,7 +252,13 @@ func emitData(prog *Obj) {
 		println("  .globl %s", vr.name)
 		println("%s:", vr.name)
 		if vr.init != nil {
-			println("  .long %d", vr.init.rhs.val)
+			if vr.init.rhs != nil && vr.init.rhs.vr != nil && vr.init.rhs.vr.initData != "" {
+				for i := 0; i < vr.ty.size; i++ {
+					println("  .byte %d", vr.init.rhs.vr.initData[i])
+				}
+			} else if vr.init.rhs.val != 0 {
+				println("  .long %d", vr.init.rhs.val)
+			}
 		}
 		if vr.initData != "" {
 			for i := 0; i < vr.ty.size; i++ {

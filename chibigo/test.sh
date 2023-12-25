@@ -147,5 +147,11 @@ assert 3 'var x int = 3; func main() int { return x;}'
 assert 2 'var x int = 1; func main() int { x=2; return x;}'
 assert 2 'var x int = 1; func main() int { {x = 2;} return x;}'
 assert 2 'var x [3]int; func main() int { x[1] = 2; return x[1];}'
+assert 3 'var x, y int = 1, 3; func main() int { x=2; return y;}'
+
+assert 97 'var x [3]char = "abc"; func main char { return x[0]; }'
+assert 98 'var x [3]char = "abc"; func main char { return x[1]; }'
+assert 99 'var x [3]char = "abc"; func main char { return x[2]; }'
+assert 97 'var x [3]char = "abc"; func main char { x[2] = "a"; return x[2]; }'
 
 echo OK
