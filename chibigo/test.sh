@@ -143,4 +143,9 @@ assert 2 'func main() int { var x int=2; { var x int=3; } return x; }'
 assert 2 'func main() int { var x int=2; { var x int=3; } { var y int=4; return x; }}'
 assert 3 'func main() int { var x int=2; { x=3; } return x; }'
 
+assert 3 'var x int = 3; func main() int { return x;}'
+assert 2 'var x int = 1; func main() int { x=2; return x;}'
+assert 2 'var x int = 1; func main() int { {x = 2;} return x;}'
+assert 2 'var x [3]int; func main() int { x[1] = 2; return x[1];}'
+
 echo OK

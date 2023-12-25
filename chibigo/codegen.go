@@ -29,19 +29,19 @@ func count() func() int {
 }
 
 func push() {
-	println("  push rax\n")
+	println("  push rax")
 	depth++
 }
 
 func pop(arg string) {
-	println("  pop %s\n", arg)
+	println("  pop %s", arg)
 	depth--
 }
 
 func cmp(cmd string) {
-	println("  cmp rax, rdi\n")
-	println("  %s al\n", cmd)
-	println("  movzb rax, al\n")
+	println("  cmp rax, rdi")
+	println("  %s al", cmd)
+	println("  movzb rax, al")
 }
 
 // Round up `n` to the nearest multiple of `align`. For instance,
@@ -59,10 +59,10 @@ func genAddr(node *Node) {
 	case ND_VAR:
 		if node.vr.isLocal == true {
 			// Local variable
-			println("  lea rax, %d[rbp]\n", node.vr.offset)
+			println("  lea rax, %d[rbp]", node.vr.offset)
 		} else {
 			// Global variable
-			println("  lea rax, [rip + %s]\n", node.vr.name)
+			println("  lea rax, [rip + %s]", node.vr.name)
 		}
 		return
 	case ND_DEREF:
@@ -80,9 +80,9 @@ func load(ty *Type) {
 		return
 	}
 	if ty != nil && ty.size == 1 {
-		println("  movsx rax, byte ptr [rax]\n")
+		println("  movsx rax, byte ptr [rax]")
 	} else {
-		println("  mov rax, [rax]\n")
+		println("  mov rax, [rax]")
 	}
 }
 
@@ -91,20 +91,20 @@ func load(ty *Type) {
 func store(ty *Type) {
 	pop("rdi")
 	if ty != nil && ty.size == 1 {
-		println("  mov [rdi], al\n")
+		println("  mov [rdi], al")
 	} else {
-		println("  mov [rdi], rax\n")
+		println("  mov [rdi], rax")
 	}
 }
 
 func genExpr(node *Node) {
 	switch node.kind {
 	case ND_NUM:
-		println("  mov rax, %d\n", node.val)
+		println("  mov rax, %d", node.val)
 		return
 	case ND_NEG:
 		genExpr(node.lhs)
-		println("  neg rax\n")
+		println("  neg rax")
 		return
 	case ND_VAR:
 		genAddr(node)
@@ -133,8 +133,8 @@ func genExpr(node *Node) {
 		for i := nargs - 1; i >= 0; i-- {
 			pop(argreg64[i])
 		}
-		println("  mov rax, 0\n")
-		println("  call %s\n", node.funcname)
+		println("  mov rax, 0")
+		println("  call %s", node.funcname)
 		return
 	}
 
@@ -145,17 +145,17 @@ func genExpr(node *Node) {
 
 	switch node.kind {
 	case ND_ADD:
-		println("  add rax, rdi\n")
+		println("  add rax, rdi")
 		return
 	case ND_SUB:
-		println("  sub rax, rdi\n")
+		println("  sub rax, rdi")
 		return
 	case ND_MUL:
-		println("  imul rax, rdi\n")
+		println("  imul rax, rdi")
 		return
 	case ND_DIV:
-		println("  cqo\n")
-		println("  idiv rdi\n")
+		println("  cqo")
+		println("  idiv rdi")
 		return
 	case ND_EQ:
 		cmp("sete")
@@ -180,33 +180,33 @@ func genStmt(node *Node) {
 	case ND_IF:
 		c := counter()
 		genExpr(node.cond)
-		println("  cmp rax, 0\n")
-		println("  je  .L.else.%d\n", c)
+		println("  cmp rax, 0")
+		println("  je  .L.else.%d", c)
 		genStmt(node.then)
-		println("  jmp .L.end.%d\n", c)
-		println(".L.else.%d:\n", c)
+		println("  jmp .L.end.%d", c)
+		println(".L.else.%d:", c)
 		if node.els != nil {
 			genStmt(node.els)
 		}
-		println(".L.end.%d:\n", c)
+		println(".L.end.%d:", c)
 		return
 	case ND_FOR:
 		c := counter()
 		if node.init != nil {
 			genExpr(node.init)
 		}
-		println(".L.begin.%d:\n", c)
+		println(".L.begin.%d:", c)
 		if node.cond != nil {
 			genExpr(node.cond)
-			println("  cmp rax, 0\n")
-			println("  je  .L.end.%d\n", c)
+			println("  cmp rax, 0")
+			println("  je  .L.end.%d", c)
 		}
 		genStmt(node.then)
 		if node.inc != nil {
 			genExpr(node.inc)
 		}
-		println("  jmp .L.begin.%d\n", c)
-		println(".L.end.%d:\n", c)
+		println("  jmp .L.begin.%d", c)
+		println(".L.end.%d:", c)
 		return
 	case ND_BLOCK:
 		for n := node.body; n != nil; n = n.next {
@@ -215,7 +215,7 @@ func genStmt(node *Node) {
 		return
 	case ND_RETURN:
 		genExpr(node.lhs)
-		println("  jmp .L.return.%s\n", current_fn.name)
+		println("  jmp .L.return.%s", current_fn.name)
 		return
 	case ND_EXPR_STMT:
 		genExpr(node.lhs)
@@ -248,15 +248,18 @@ func emitData(prog *Obj) {
 			continue
 		}
 
-		println("  .data\n")
-		println("  .globl %s\n", vr.name)
-		println("%s:\n", vr.name)
+		println("  .data")
+		println("  .globl %s", vr.name)
+		println("%s:", vr.name)
+		if vr.init != nil {
+			println("  .long %d", vr.init.rhs.val)
+		}
 		if vr.initData != "" {
 			for i := 0; i < vr.ty.size; i++ {
-				println("  .byte %d\n", vr.initData[i])
+				println("  .byte %d", vr.initData[i])
 			}
 		} else {
-			println("  .zero %d\n", vr.ty.size)
+			println("  .zero %d", vr.ty.size)
 		}
 	}
 }
@@ -264,29 +267,29 @@ func emitData(prog *Obj) {
 func emitText(prog *Obj) {
 	assignLvarOffsets(prog)
 
-	println(".intel_syntax noprefix\n")
+	println(".intel_syntax noprefix")
 	for fn := prog; fn != nil; fn = fn.next {
 		if fn.isFunction == false {
 			continue
 		}
 
-		println(".globl %s\n", fn.name)
-		println(".text\n")
-		println("%s:\n", fn.name)
+		println(".globl %s", fn.name)
+		println(".text")
+		println("%s:", fn.name)
 		current_fn = fn
 
 		// Prologue
-		println("  push rbp\n")
-		println("  mov rbp, rsp\n")
-		println("  sub rsp, %d\n", fn.stackSize)
+		println("  push rbp")
+		println("  mov rbp, rsp")
+		println("  sub rsp, %d", fn.stackSize)
 
 		// Save passed-by-register arguments to the stack
 		i := 0
 		for vr := fn.params; vr != nil; vr = vr.next {
 			if vr != nil && vr.ty != nil && vr.ty.size == 1 {
-				println("  mov %d[rbp], %s\n", vr.offset, argreg8[i])
+				println("  mov %d[rbp], %s", vr.offset, argreg8[i])
 			} else {
-				println("  mov %d[rbp], %s\n", vr.offset, argreg64[i])
+				println("  mov %d[rbp], %s", vr.offset, argreg64[i])
 			}
 			i++
 		}
@@ -298,10 +301,10 @@ func emitText(prog *Obj) {
 		}
 
 		// Epilogue
-		println(".L.return.%s:\n", fn.name)
-		println("  mov rsp, rbp\n")
-		println("  pop rbp\n")
-		println("  ret\n")
+		println(".L.return.%s:", fn.name)
+		println("  mov rsp, rbp")
+		println("  pop rbp")
+		println("  ret")
 	}
 }
 

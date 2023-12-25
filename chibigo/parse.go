@@ -71,6 +71,7 @@ type Obj struct {
 	locals     *Obj
 	stackSize  int
 	initData   string // Global variable
+	init       *Node  // Global variable initial value
 }
 
 // Scope for local or global variables.
@@ -717,8 +718,19 @@ func storeIdentTemp(rest **Token, tok *Token) *Node {
 func globalVariable(tok *Token) *Token {
 	vrs_head := storeIdentTemp(&tok, tok)
 	ty := declarator(&tok, tok)
-	for vr_cur := vrs_head; vr_cur != nil; vr_cur = vr_cur.next {
-		newGvar(getIdent(vr_cur.tok), ty)
+	if consume(&tok, tok, "=") {
+		for vr_cur := vrs_head; vr_cur != nil; vr_cur = vr_cur.next {
+			vr := newGvar(getIdent(vr_cur.tok), ty)
+			lhs := newVarNode(vr, ty.name)
+			rhs := assign(&tok, tok)
+			node := newBinary(ND_ASSIGN, lhs, rhs, tok)
+			vr.init = node
+			consume(&tok, tok, ",")
+		}
+	} else {
+		for vr_cur := vrs_head; vr_cur != nil; vr_cur = vr_cur.next {
+			newGvar(getIdent(vr_cur.tok), ty)
+		}
 	}
 	tok = skip(tok, ";")
 	return tok
