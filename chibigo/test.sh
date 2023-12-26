@@ -154,4 +154,10 @@ assert 98 'var x [3]char = "abc"; func main char { return x[1]; }'
 assert 99 'var x [3]char = "abc"; func main char { return x[2]; }'
 assert 97 'var x [3]char = "abc"; func main char { x[2] = "a"; return x[2]; }'
 
+assert 1 'func main() int { var x [2]int = [2]int{0, 1}; return x[1]; }'
+assert 1 'func main() int { var x [4]int = [4]int{1, 1, 2, 3}; return x[1]; }'
+
+assert 2 'func main() int { var x [4]int = [4]int{1, 1, 2, 3}; x[1] = 2; return x[1]; }'
+assert 1 'func main() int { var x [4]int = [4]int{1, 1, 2, 3}; x[2] = 3; return x[1]; }'
+
 echo OK

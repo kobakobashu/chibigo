@@ -296,9 +296,24 @@ func declaration(rest **Token, tok *Token) *Node {
 
 			lhs := newVarNode(vr, ty.name)
 			rhs := assign(&tok, tok)
-			node := newBinary(ND_ASSIGN, lhs, rhs, tok)
-			cur.next = newUnary(ND_EXPR_STMT, node, tok)
-			cur = cur.next
+
+			if rhs.ty != nil && rhs.ty.kind == TY_ARRAY {
+				i := 0
+				for cur_node := rhs; cur_node != nil; cur_node = cur_node.next {
+					tmp := newNum(i, tok)
+					addType(tmp)
+					new_lhs := newUnary(ND_DEREF, newAdd(lhs, tmp, tok), tok)
+					node := newBinary(ND_ASSIGN, new_lhs, rhs, tok)
+					i += 1
+					cur.next = newUnary(ND_EXPR_STMT, node, tok)
+					cur = cur.next
+					rhs = rhs.next
+				}
+			} else {
+				node := newBinary(ND_ASSIGN, lhs, rhs, tok)
+				cur.next = newUnary(ND_EXPR_STMT, node, tok)
+				cur = cur.next
+			}
 			consume(&tok, tok, ",")
 		}
 	} else {
@@ -413,9 +428,39 @@ func expr(rest **Token, tok *Token) *Node {
 	return assign(rest, tok)
 }
 
+// array-init = declarator "{" (num (, num)*)? "}"
+
+func arrayInit(rest **Token, tok *Token) *Node {
+	head := new(Node)
+	cur := head
+	ty := declarator(&tok, tok)
+	tok = skip(tok, "{")
+	for i := 0; i < ty.arrayLen; i += 1 {
+		if i != 0 {
+			tok = skip(tok, ",")
+		}
+		num, err := getNumber(tok)
+		tok = tok.next
+		if err != nil {
+			fmt.Printf("Error: ", err)
+			return nil
+		}
+		cur.next = newNum(num, tok)
+		cur = cur.next
+	}
+	tok = skip(tok, "}")
+	head.next.ty = ty
+	*rest = tok
+	return head.next
+}
+
 // assign = equality ("=" assign)?
+//        | array-init
 
 func assign(rest **Token, tok *Token) *Node {
+	if equal(tok, "[") == true {
+		return arrayInit(rest, tok)
+	}
 	node := equality(&tok, tok)
 	if equal(tok, "=") {
 		return newBinary(ND_ASSIGN, node, assign(rest, tok.next), tok)
