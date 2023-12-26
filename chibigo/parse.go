@@ -439,13 +439,19 @@ func arrayInit(rest **Token, tok *Token) *Node {
 		if i != 0 {
 			tok = skip(tok, ",")
 		}
-		num, err := getNumber(tok)
-		tok = tok.next
-		if err != nil {
-			fmt.Printf("Error: ", err)
-			return nil
+		if ty.base.kind == TY_CHAR {
+			vr := newStringLiteral(tok.str, tok.ty)
+			tok = tok.next
+			cur.next = newVarNode(vr, tok)
+		} else if ty.base.kind == TY_INT {
+			num, err := getNumber(tok)
+			tok = tok.next
+			if err != nil {
+				fmt.Printf("Error: ", err)
+				return nil
+			}
+			cur.next = newNum(num, tok)
 		}
-		cur.next = newNum(num, tok)
 		cur = cur.next
 	}
 	tok = skip(tok, "}")

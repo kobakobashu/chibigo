@@ -160,4 +160,10 @@ assert 1 'func main() int { var x [4]int = [4]int{1, 1, 2, 3}; return x[1]; }'
 assert 2 'func main() int { var x [4]int = [4]int{1, 1, 2, 3}; x[1] = 2; return x[1]; }'
 assert 1 'func main() int { var x [4]int = [4]int{1, 1, 2, 3}; x[2] = 3; return x[1]; }'
 
+assert 97 'func main() char { var x [3]char = "abc"; return x[0]; }'
+assert 98 'func main() char { var x [2]char = [2]char{"a", "b"}; return x[1]; }'
+assert 99 'func main() char { var x [2]char = [3]char{"a", "b", "c"}; return x[2]; }'
+# ToDo: x[0] has unexpected value
+#     ex) 'func main() char { var x [2]char = [2]char{"a", "b"}; return x[0]; }'
+
 echo OK
