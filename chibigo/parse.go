@@ -775,9 +775,26 @@ func globalVariable(tok *Token) *Token {
 			vr := newGvar(getIdent(vr_cur.tok), ty)
 			lhs := newVarNode(vr, ty.name)
 			rhs := assign(&tok, tok)
-			node := newBinary(ND_ASSIGN, lhs, rhs, tok)
-			vr.init = node
-			consume(&tok, tok, ",")
+			head := new(Node)
+			cur := head
+			if rhs.ty != nil && rhs.ty.kind == TY_ARRAY {
+				i := 0
+				for cur_node := rhs; cur_node != nil; cur_node = cur_node.next {
+					tmp := newNum(i, tok)
+					addType(tmp)
+					new_lhs := newUnary(ND_DEREF, newAdd(lhs, tmp, tok), tok)
+					node := newBinary(ND_ASSIGN, new_lhs, rhs, tok)
+					i += 1
+					cur.next = newUnary(ND_EXPR_STMT, node, tok)
+					cur = cur.next
+					rhs = rhs.next
+				}
+				vr.init = head.next
+			} else {
+				node := newBinary(ND_ASSIGN, lhs, rhs, tok)
+				vr.init = node
+				consume(&tok, tok, ",")
+			}
 		}
 	} else {
 		for vr_cur := vrs_head; vr_cur != nil; vr_cur = vr_cur.next {

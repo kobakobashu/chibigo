@@ -256,8 +256,13 @@ func emitData(prog *Obj) {
 				for i := 0; i < vr.ty.size; i++ {
 					println("  .byte %d", vr.init.rhs.vr.initData[i])
 				}
-			} else if vr.init.rhs.val != 0 {
+			} else if vr.init.rhs != nil && vr.init.rhs.val != 0 {
 				println("  .long %d", vr.init.rhs.val)
+			} else if vr.init.rhs == nil {
+				for vr.init != nil {
+					println("  .quad %d", vr.init.lhs.rhs.val)
+					vr.init = vr.init.next
+				}
 			}
 		}
 		if vr.initData != "" {

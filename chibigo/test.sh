@@ -166,4 +166,13 @@ assert 99 'func main() char { var x [2]char = [3]char{"a", "b", "c"}; return x[2
 # ToDo: x[0] has unexpected value
 #     ex) 'func main() char { var x [2]char = [2]char{"a", "b"}; return x[0]; }'
 
+assert 1 'var x [2]int = [2]int{1, 2}; func main() int { return x[0]; }'
+assert 2 'var x [2]int = [2]int{1, 2}; func main() int { return x[1]; }'
+assert 0 'var x [5]int = [5]int{0, 1, 2, 3, 4}; func main() int { return x[0]; }'
+assert 4 'var x [5]int = [5]int{0, 1, 2, 3, 4}; func main() int { return x[4]; }'
+assert 3 'var x [2]int = [2]int{1, 2}; var y [2]int = [2]int{3, 4}; func main() int { return y[0]; }'
+
+assert 1 'var x [2]int = [2]int{1, 2}; func main() int { x[1] = 3; return x[0]; }'
+assert 3 'var x [2]int = [2]int{1, 2}; func main() int { x[1] = 3; return x[1]; }'
+
 echo OK
