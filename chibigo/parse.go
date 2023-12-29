@@ -296,8 +296,7 @@ func declaration(rest **Token, tok *Token) *Node {
 
 			lhs := newVarNode(vr, ty.name)
 			rhs := assign(&tok, tok)
-
-			if rhs.ty != nil && rhs.ty.kind == TY_ARRAY {
+			if ty != nil && ty.kind == TY_ARRAY {
 				i := 0
 				for cur_node := rhs; cur_node != nil; cur_node = cur_node.next {
 					tmp := newNum(i, tok)
@@ -440,17 +439,18 @@ func arrayInit(rest **Token, tok *Token) *Node {
 			tok = skip(tok, ",")
 		}
 		if ty.base.kind == TY_CHAR {
+			ty.kind = TY_CHAR
 			vr := newStringLiteral(tok.str, tok.ty)
-			tok = tok.next
 			cur.next = newVarNode(vr, tok)
+			tok = tok.next
 		} else if ty.base.kind == TY_INT {
 			num, err := getNumber(tok)
-			tok = tok.next
 			if err != nil {
 				fmt.Printf("Error: ", err)
 				return nil
 			}
 			cur.next = newNum(num, tok)
+			tok = tok.next
 		}
 		cur = cur.next
 	}
